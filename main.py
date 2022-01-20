@@ -18,14 +18,14 @@ async def run(token:str, notif_channel:str, twitch_channels:list):
         for twitch_channel in twitch_channels:
             # Init twitch helper for each channel, then search for live stream
             twitchHelper = TwitchHelper(twitch_channel)
-            data = twitchHelper.poll_stream().read_user_data()
+            data = twitchHelper.search_channels().parse_data()
 
             if data: # If a live stream was found:
                 if not cm.checkCache(twitch_channel): # If the selected channel is not in the cache, an embed can be posted
                     notif = hikari.Embed(title=f"{data['title']}",
                                         url=f"https://www.twitch.tv/{data['broadcaster_login']}",
                                         colour="#9146FF")\
-                        .set_image(twitchHelper.get_stream_thumbnail(1280, 720))\
+                        .set_image(twitchHelper.get_thumbnail(1280, 720))\
                         .set_author(name=data["display_name"], icon=data["thumbnail_url"])\
                         .add_field(name="Game", value=data["game_name"], inline=True)\
                         .add_field(name="Started at", value=parseTimestamp(data["started_at"]), inline=True)

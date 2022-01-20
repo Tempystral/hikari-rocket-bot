@@ -16,20 +16,22 @@ class TwitchHelper:
       return None
     return Twitch(id, secret)
 
-  def poll_stream(self) -> TwitchHelper:
+  def search_channels(self) -> TwitchHelper:
     self.data = self.twitch.search_channels(self.query, live_only=True)
     return self
     
-  def read_user_data(self) -> dict:
+  def parse_data(self) -> dict:
     if not self.data:
       pprint("Data not initialized.")
       return None
     if not self.data.get("data"):
       pprint(f"No streams found for '{self.query}'")
       return None
-    return self.data.get("data")[0]
+    # Filter results
+    entry:list = [result for result in self.data["data"] if result["broadcaster_login"] == self.query ]
+    return entry[0] if entry else None
 
-  def get_stream_thumbnail(self, width:int, height:int) -> str:
+  def get_thumbnail(self, width:int, height:int) -> str:
     data:dict = self.twitch.get_streams(user_login=self.query)
     if not data:
       pprint("Data not initialized.")
