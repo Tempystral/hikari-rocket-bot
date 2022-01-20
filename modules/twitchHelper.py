@@ -25,7 +25,7 @@ class TwitchHelper:
       pprint("Data not initialized.")
       return None
     if not self.data.get("data"):
-      pprint("No streams found.")
+      pprint(f"No streams found for '{self.query}'")
       return None
     return self.data.get("data")[0]
 
