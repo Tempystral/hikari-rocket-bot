@@ -1,0 +1,3 @@
+hikari
+python_dateutil
+twitchAPI
