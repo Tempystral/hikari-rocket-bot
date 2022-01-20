@@ -30,12 +30,12 @@ class TwitchHelper:
     return self.data.get("data")[0]
 
   def get_stream_thumbnail(self, width:int, height:int) -> str:
-    if not self.data:
+    data:dict = self.twitch.get_streams(user_login=self.query)
+    if not data:
       pprint("Data not initialized.")
       return None
-    if not self.data.get("data"):
+    if not data.get("data"):
       pprint("No streams found.")
       return None
-    data = self.twitch.get_streams(user_login=self.query)
     thumbnail:str = data.get("data")[0].get("thumbnail_url")
     return thumbnail.replace(r'{width}', str(width)).replace(r'{height}', str(height))
