@@ -1,3 +1,4 @@
 hikari
 python_dateutil
+python-decouple
 twitchAPI
