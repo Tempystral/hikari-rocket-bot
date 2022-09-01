@@ -1,14 +1,25 @@
 from __future__ import annotations
 
-from decouple import config
+from logging import getLogger
 from pprint import pprint
+
+from decouple import config
+from modules import TwitchResponse, TwitchStream
 from twitchAPI.twitch import Twitch
 
+logger = getLogger("twitchHelper")
+
+def get_streams(twitch_channels:list[str]) -> list[TwitchStream]:
+  return [TwitchHelper().get_live_channels(ch).parse_data() for ch in twitch_channels]
+
+def get_stream(channel:str) -> TwitchStream:
+  data = TwitchHelper().get_live_channels(channel).parse_data()
+  if data:
+    logger.info(f"Found data for channel: {channel} playing {data.game_name} since {data.started_at}")
+  return data
 
 class TwitchHelper:
-  def __init__(self, channel):
-    self.query = channel
-    self.data:dict = None
+  def __init__(self):
     self.twitch = self.init_twitch(config("TWITCH_ID"), config("TWITCH_SECRET"))
 
   def init_twitch(self, id, secret) -> Twitch:
@@ -16,28 +27,17 @@ class TwitchHelper:
       return None
     return Twitch(id, secret)
 
-  def search_channels(self) -> TwitchHelper:
-    self.data = self.twitch.search_channels(self.query, live_only=True)
-    return self
-    
-  def parse_data(self) -> dict:
-    if not self.data:
-      pprint("Data not initialized.")
-      return None
-    if not self.data.get("data"):
-      pprint(f"No streams found for '{self.query}'")
-      return None
-    # Filter results
-    entry:list = [result for result in self.data["data"] if result["broadcaster_login"] == self.query ]
-    return entry[0] if entry else None
+  def get_live_channels(self, query: str) -> TwitchResponse:
+    response = self.twitch.search_channels(query, live_only=True)
+    return TwitchResponse(query, response)
 
-  def get_thumbnail(self, width:int, height:int) -> str:
-    data:dict = self.twitch.get_streams(user_login=self.query)
+  def get_thumbnail(self, channel:str, width:int, height:int) -> str:
+    data:dict = self.twitch.get_streams(user_login=channel)
     if not data:
-      pprint("Data not initialized.")
+      logger.error("Data not initialized!")
       return None
     if not data.get("data"):
-      pprint("No streams found.")
+      logger.error("No streams found!")
       return None
     thumbnail:str = data.get("data")[0].get("thumbnail_url")
     return thumbnail.replace(r'{width}', str(width)).replace(r'{height}', str(height))

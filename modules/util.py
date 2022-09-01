@@ -1,3 +1,5 @@
+from types import FunctionType
+from typing import Iterable
 from dateutil import parser as dp
 
 def parseTimestamp(isoString:str) -> str:
@@ -8,3 +10,9 @@ def parseTimestamp(isoString:str) -> str:
     timestamp = isoString
   return timestamp
 
+def find(predicate: FunctionType, it: Iterable):
+  matches = []
+  for element in it:
+    if predicate(element):
+      matches.append(element)
+  return matches if matches else None
