@@ -17,18 +17,6 @@ async def run(token:str, cache:str, settings: dict):
     twitch = TwitchHelper()
     cm = cacheManager(cache)
 
-    '''
-    list of all channels
-    for each channel:
-      check if live
-      if live:
-        for each server subscribed to channel:
-          post message
-        add to cache
-      else
-        remove from cache
-    '''
-
     channels = {ch for server in settings["servers"] for ch in server["watching"]}
     for channel in channels:
       stream = get_stream(channel)
