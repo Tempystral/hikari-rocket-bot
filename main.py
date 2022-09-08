@@ -1,24 +1,13 @@
 import asyncio
 import json
-import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
 
 from decouple import config
 
 import bot
+from modules.util import setup_logging
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-logger.addHandler(ch)
-
-fh = TimedRotatingFileHandler(filename="./logs/rocketbot.log", when="midnight")
-fh.setFormatter(logging.Formatter("%(levelname)-1.1s %(asctime)23.23s %(name)s: %(message)s"))
-fh.setLevel(logging.DEBUG)
-logger.addHandler(fh)
+logger = setup_logging()
 
 if __name__ == "__main__":
   if os.name != "nt":

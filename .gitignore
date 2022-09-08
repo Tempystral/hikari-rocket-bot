@@ -113,3 +113,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 cache
+logs/rocketbot.log.2022-09-01
+settings.json
