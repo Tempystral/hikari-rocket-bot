@@ -4,8 +4,9 @@ from logging import getLogger
 from pprint import pprint
 
 from decouple import config
-from modules import TwitchResponse, TwitchStream
 from twitchAPI.twitch import Twitch
+
+from modules import TwitchResponse, TwitchStream
 
 logger = getLogger("twitchHelper")
 

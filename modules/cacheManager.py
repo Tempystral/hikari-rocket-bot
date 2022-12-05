@@ -1,4 +1,6 @@
 from os import path
+from typing import Protocol
+import aiofiles
 
 class cacheManager:
   def __init__(self, cache:str):
@@ -7,38 +9,35 @@ class cacheManager:
       with open(cache, "w") as file:
         file.write("")
   
-  def contains(self, query:str) -> bool:
+  async def contains(self, query:str) -> bool:
     '''Look for a string in the cache. Returns `True` if the string is present.'''
-    with open(self.cache, "r") as f:
-      usernames = [line.strip() for line in f if line.strip() == query]
-      if usernames:
-        return True
-      return False
+    usernames = await self.__readlines(lambda x: x == query)
+    return True if usernames else False
 
-  def put(self, entry:str):
+  async def put(self, entry:str) -> None:
     '''Write a new entry to the cache. If the entry is already present, pass.'''
     if not self.contains(entry):
-      with open(self.cache, "a") as f:
+      async with aiofiles.open(self.cache, "a") as f:
         f.write(entry + "\n")
-        return
     else:
       print(f"Username {entry} was already cached.")
 
-  def get(self, query:str) -> str:
+  async def get(self, query:str) -> str:
     '''Gets an entry from the cache. If the entry is not present, return an empty string.'''
-    with open(self.cache, "r") as f:
-      usernames = [line.strip() for line in f if line.strip() == query]
-      if usernames:
-        return usernames[0]
-      return ""
+    usernames = await self.__readlines(lambda x: x == query)
+    return usernames[0] if usernames else ""
     
-  def remove(self, entry:str):
+  async def remove(self, query:str) -> None:
     '''Removes an entry if it exists in the cache.'''
-    entries = list()
-    with open(self.cache, "r") as f:
-      entries = [line.strip() for line in f if line.strip() != ""]
-    if entry in entries:
-      entries.remove(entry)
-    with open(self.cache, "w") as f:
+    entries = await self.__readlines(lambda x: x != "")
+    if query in entries:
+      entries.remove(query)
+    async with aiofiles.open(self.cache, "w") as f:
       for e in entries:
         f.write(e + "\n")
+  
+  async def __readlines(self, condition: Protocol = None) -> list[str]:
+    '''Read lines from the cache file with an optional'''
+    async with aiofiles.open(self.cache, "r") as f:
+      lines = [line.strip() for line in await f.readlines() if (condition(line.strip()) if condition is not None else True)]
+    return lines

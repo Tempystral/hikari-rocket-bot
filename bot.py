@@ -20,17 +20,17 @@ async def run(token:str, cache:str, settings: dict):
     channels = {ch for server in settings["servers"] for ch in server["watching"]}
     for channel in channels:
       stream = get_stream(channel)
-      if stream and not cm.contains(channel):
+      if stream and not await cm.contains(channel):
         # If the stream is live and has NOT been announced
         for server in find(lambda x: channel in x["watching"], settings["servers"]):
           # If the selected channel is not in the cache, an embed can be posted
-          notif = Embed(title=f"{stream.title}",
-                        url=f"https://www.twitch.tv/{stream.broadcaster_login}",
-                        colour="#9146FF")\
-                  .set_image(twitch.get_thumbnail(channel, 1280, 720))\
-                  .set_author(name=stream.display_name, icon=stream.thumbnail_url)\
-                  .add_field(name="Game", value=stream.game_name, inline=True)\
-                  .add_field(name="Started at", value=parseTimestamp(stream.started_at), inline=True)
+          notif = (
+            Embed(title=f"{stream.title}", url=f"https://www.twitch.tv/{stream.broadcaster_login}", colour="#9146FF")
+              .set_image(twitch.get_thumbnail(channel, 1280, 720))
+              .set_author(name=stream.display_name, icon=stream.thumbnail_url)
+              .add_field(name="Game", value=stream.game_name, inline=True)
+              .add_field(name="Started at", value=parseTimestamp(stream.started_at), inline=True)
+          )
           
           message_text = f"{'@everyone, ' if server['everyone'] else ''}{stream.display_name} is live!"
           try:
@@ -38,11 +38,11 @@ async def run(token:str, cache:str, settings: dict):
           except ForbiddenError as e:
             log.error(f"Not authorized to post in server: {server['name']}!")
         
-        cm.put(channel) # Add the channel to the cache so it isn't announced again
+        await cm.put(channel) # Add the channel to the cache so it isn't announced again
 
-      elif not stream and cm.contains(channel):
+      elif not stream and await cm.contains(channel):
         #If the stream is not live but is still in the cache
-        cm.remove(channel)
+        await cm.remove(channel)
       else:
-        if cm.contains(channel):
+        if await cm.contains(channel):
           log.debug(f"{channel} already announced, skipping...")
