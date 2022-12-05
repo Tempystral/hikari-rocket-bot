@@ -1,48 +1,50 @@
-from logging import getLogger
+import json
+import logging
 
-from hikari import Embed, RESTApp, TokenType
-from hikari.errors import ForbiddenError
-
+import hikari
 from decouple import config
-from modules import TwitchHelper, cacheManager, get_stream, parseTimestamp
-from modules.util import find
+from lightbulb import BotApp
 
-log = getLogger("bot")
+log = logging.getLogger("RocketBot")
 log.setLevel("DEBUG")
 
-async def run(token:str, cache:str, settings: dict):
-  # We acquire a client with a given token. This allows one REST app instance
-  # with one internal connection pool to be reused.
-  async with RESTApp().acquire(token, TokenType.BOT) as client:
-    twitch = TwitchHelper()
-    cm = cacheManager(cache)
 
-    channels = {ch for server in settings["servers"] for ch in server["watching"]}
-    for channel in channels:
-      stream = get_stream(channel)
-      if stream and not await cm.contains(channel):
-        # If the stream is live and has NOT been announced
-        for server in find(lambda x: channel in x["watching"], settings["servers"]):
-          # If the selected channel is not in the cache, an embed can be posted
-          notif = (
-            Embed(title=f"{stream.title}", url=f"https://www.twitch.tv/{stream.broadcaster_login}", colour="#9146FF")
-              .set_image(twitch.get_thumbnail(channel, 1280, 720))
-              .set_author(name=stream.display_name, icon=stream.thumbnail_url)
-              .add_field(name="Game", value=stream.game_name, inline=True)
-              .add_field(name="Started at", value=parseTimestamp(stream.started_at), inline=True)
-          )
-          
-          message_text = f"{'@everyone, ' if server['everyone'] else ''}{stream.display_name} is live!"
-          try:
-            await client.create_message(channel=server["notification_channel"], content=message_text, embed=notif)
-          except ForbiddenError as e:
-            log.error(f"Not authorized to post in server: {server['name']}!")
-        
-        await cm.put(channel) # Add the channel to the cache so it isn't announced again
+class RocketBot(BotApp):
+  def __init__(self, token:str, log_level:str = "DEBUG"):
+    self.token: str = token
+    self.settings: dict = self.load_settings()
+    self.guilds: list = [ guild["guild_id"] for guild in self.settings.get("servers") ]
+    super().__init__(token=self.token,
+                     prefix="!",
+                     intents=hikari.Intents.ALL_GUILDS,
+                     default_enabled_guilds=self.guilds,
+                     #banner="bot",
+                     logs=log_level
+                    )
 
-      elif not stream and await cm.contains(channel):
-        #If the stream is not live but is still in the cache
-        await cm.remove(channel)
-      else:
-        if await cm.contains(channel):
-          log.debug(f"{channel} already announced, skipping...")
+  async def on_starting(self, event:hikari.Event) -> None:
+    log.info("Starting...")
+    #self.d.aio_session = ClientSession()
+  
+  async def on_started(self, event:hikari.Event) -> None:
+    log.info(f"Logged in as:\n\t{self.user}\nwith ID:\n\t{self.user.id}")
+    log.info("Logged into guilds:\n\t{guilds}".format(guilds="\n\t".join((f"{s.name}:{s.id}" for s in self.guilds))))
+
+  async def on_stopping(self, event:hikari.Event) -> None:
+    log.info("Shutting down...")
+    #await self.d.aio_session.close()
+
+  def load_settings(self) -> dict:
+    settings = None
+    with open(config("SETTINGS_FILE"), "r") as f:
+      settings = json.load(f)
+    return settings
+
+def create(token:str, log_level:str = None) -> RocketBot:
+  bot = RocketBot(token, log_level) # init
+  # Listen for system events
+  bot.subscribe(hikari.StartingEvent, bot.on_starting)
+  bot.subscribe(hikari.StoppingEvent, bot.on_stopping)
+  # Load extensions
+  bot.load_extensions_from("./rocket/extensions/", must_exist=False)
+  return bot

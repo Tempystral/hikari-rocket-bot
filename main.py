@@ -5,7 +5,7 @@ import os
 from decouple import config
 
 import bot
-from modules.util import setup_logging
+from rocket.util import setup_logging
 
 logger = setup_logging()
 
@@ -14,7 +14,6 @@ if __name__ == "__main__":
     import uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-  with open(config("SETTINGS_FILE"), "r") as f:
-    notif_settings = json.load(f)
-
-  asyncio.run(bot.run(config("DISCORD_TOKEN"), config("CACHE"), notif_settings))
+  bot.create(
+    config("DISCORD_TOKEN", cast=str)
+  ).run()

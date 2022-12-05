@@ -6,7 +6,7 @@ from pprint import pprint
 from decouple import config
 from twitchAPI.twitch import Twitch
 
-from modules import TwitchResponse, TwitchStream
+from . import TwitchResponse, TwitchStream
 
 logger = getLogger("twitchHelper")
 
