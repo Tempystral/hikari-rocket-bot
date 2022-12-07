@@ -5,7 +5,7 @@ from types import FunctionType
 from typing import Iterable
 
 from dateutil import parser as dp
-
+from .config import LOG_LEVEL
 
 def parseTimestamp(isoString:str) -> str:
   timestamp:str = ""
@@ -24,19 +24,14 @@ def find(predicate: FunctionType, it: Iterable):
 
 def setup_logging() -> logging.Logger:
   logger = logging.getLogger()
-
-  logger.setLevel(logging.DEBUG)
-  ch = logging.StreamHandler()
-  ch.setLevel(logging.INFO)
-  ch.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-  logger.addHandler(ch)
+  logger.setLevel(LOG_LEVEL)
 
   if not path.exists("./logs"):
     mkdir("./logs")
   
   fh = TimedRotatingFileHandler(filename="./logs/rocketbot.log", when="midnight")
   fh.setFormatter(logging.Formatter("%(levelname)-1.1s %(asctime)23.23s %(name)s: %(message)s"))
-  fh.setLevel(logging.DEBUG)
+  fh.setLevel(LOG_LEVEL)
   logger.addHandler(fh)
 
   return logger

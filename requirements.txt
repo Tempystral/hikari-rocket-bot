@@ -4,3 +4,4 @@ uvloop>= 0.16; sys_platform != "win32"
 python_dateutil
 python-decouple
 twitchAPI
+aiofiles
