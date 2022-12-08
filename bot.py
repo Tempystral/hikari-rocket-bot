@@ -1,15 +1,17 @@
+import asyncio
 import json
 import logging
 
 import aiohttp
 import hikari
 from lightbulb import BotApp
+from lightbulb.utils import DataStore
 
+from rocket.twitch import TwitchHelper, create_twitch_helper
 from rocket.util import setup_logging
 from rocket.util.config import GUILDS, LOG_LEVEL
-from rocket.twitch import create_twitch_helper
 
-log = logging.getLogger("RocketBot")
+log = logging.getLogger("rocket.bot")
 
 
 class RocketBot(BotApp):
@@ -24,7 +26,7 @@ class RocketBot(BotApp):
                      #banner="bot",
                      logs=True
                     )
-
+    self.d.tasks = set()
     setup_logging()
 
   async def on_starting(self, event:hikari.Event) -> None:
@@ -37,10 +39,16 @@ class RocketBot(BotApp):
     log.info("Logged into guilds:\n\t{guilds}".format(guilds="\n\t".join((f"{guild.name} : {guild.id}" for guild in guilds))))
 
   async def on_shard_ready(self, event:hikari.Event) -> None:
-    helper = await create_twitch_helper(self)
+    self.d.helper = await create_twitch_helper(self)
+    task = asyncio.create_task(self.d.helper.subscribe())
+    self.d.get_as("tasks", set).add(task)
+    task.add_done_callback(self.d.get_as("tasks", set).discard)
 
   async def on_stopping(self, event:hikari.Event) -> None:
     await self.d.session.close()
+    helper:TwitchHelper = self.d.helper
+    asyncio.create_task(helper.shutdown())
+    
     log.info("Shutting down...")
 
 def create(token:str, log_level:str = LOG_LEVEL) -> RocketBot:

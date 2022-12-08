@@ -29,4 +29,5 @@ EVENTSUB_PORT = config("EVENTSUB_PORT", cast=int)
 
 DISCORD_TOKEN = config("DISCORD_TOKEN", cast=str)
 
-
+NGROK_PATH = config("NGROK_PATH", cast=str)
+NGROK_CONF = config("NGROK_CONF", cast=str)

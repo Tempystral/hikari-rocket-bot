@@ -1,20 +1,24 @@
 from __future__ import annotations
 
+import asyncio
 import subprocess
 from logging import getLogger
 
 import aiohttp
 from lightbulb import BotApp
 
-from rocket.util.config import EVENTSUB_PORT, TWITCH_ID, TWITCH_SECRET
+from pyngrok import conf, ngrok
+from pyngrok.ngrok import NgrokTunnel
+from rocket.util.config import (EVENTSUB_PORT, NGROK_CONF, NGROK_PATH,
+                                TWITCH_ID, TWITCH_SECRET)
 from twitchAPI.eventsub import EventSub
-from twitchAPI.twitch import Twitch
 from twitchAPI.helper import first
+from twitchAPI.twitch import Twitch
 
 from . import TwitchResponse, TwitchStream
 
-log = getLogger("twitchHelper")
-TARGET_USERNAME = 'protonjon'
+log = getLogger("rocket.twitch.helper")
+TARGET_USERNAME = ''
 
 
 async def create_twitch_helper(bot:BotApp) -> TwitchHelper:
@@ -29,36 +33,29 @@ class TwitchHelper:
   async def setup(self):
     self.twitch = await Twitch(TWITCH_ID, TWITCH_SECRET)
     self.ngrok = await self.start_proxy()
-    webhook_url = await self.get_proxy_url(self._bot.d.session)
 
     # basic setup, will run on port 8888 and a reverse proxy takes care of the https and certificate
-    self.event_sub = EventSub(webhook_url, TWITCH_ID, EVENTSUB_PORT, self.twitch)
+    self.event_sub = EventSub(self.ngrok.public_url, TWITCH_ID, EVENTSUB_PORT, self.twitch)
 
-  async def start_proxy(self) -> subprocess.Popen:
-    process = subprocess.Popen(f"ngrok http {EVENTSUB_PORT}".split(" "), shell=False, stdout=subprocess.DEVNULL)
-    log.info(f"Started ngrok process {process.pid} on port {EVENTSUB_PORT}")
-    return process
+  async def shutdown(self):
+    ngrok.kill()
+    await self.twitch.close()
 
-  async def get_proxy_url(self, session: aiohttp.ClientSession) -> dict:
-    async with aiohttp.ClientSession() as session:
-      response = await session.get(url="http://localhost:4040/api/tunnels")
-      data = await response.json()
-      try:
-        url = data["tunnels"][0]["public_url"]
-        log.info(f"Reverse proxy url: {url}")
-        return url
-      except KeyError as e:
-        return None
+  async def start_proxy(self) -> NgrokTunnel:
+    config = conf.PyngrokConfig(ngrok_path=NGROK_PATH, config_path=NGROK_CONF, ngrok_version="v3")
+    conf.set_default(config)
+    tunnel:NgrokTunnel = ngrok.connect(EVENTSUB_PORT, "http", bind_tls=True)
+    log.info(f"Started ngrok tunnel {tunnel.name} on port {EVENTSUB_PORT}")
+    return tunnel
 
   async def subscribe(self):
-    user = await first(self.twitch.get_users(logins="TARGET_USERNAME"))
+    user = await first(self.twitch.get_users(logins=TARGET_USERNAME))
     # unsubscribe from all old events that might still be there
     await self.event_sub.unsubscribe_all()
     # start the eventsub client
     self.event_sub.start()
     log.info("EventSub client started")
-    # subscribing to the desired eventsub hook for our user
-    # the given function will be called every time this event is triggered
+
     await self.event_sub.listen_channel_follow(user.id, self.on_follow)
     log.info(f"Listening for follow events for user {user.display_name}")
     # eventsub will run in its own process
