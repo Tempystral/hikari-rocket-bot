@@ -25,7 +25,6 @@ def get_watchlist(guild:int) -> list[str]:
 
 TWITCH_ID = config("TWITCH_ID", cast=str)
 TWITCH_SECRET = config("TWITCH_SECRET", cast=str)
-EVENTSUB_URL = config("EVENTSUB_URL", cast=str)
 EVENTSUB_PORT = config("EVENTSUB_PORT", cast=int)
 
 DISCORD_TOKEN = config("DISCORD_TOKEN", cast=str)

@@ -11,6 +11,8 @@ if __name__ == "__main__":
   if os.name != "nt":
     import uvloop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+  else:
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
   bot = bot.create(
     config("DISCORD_TOKEN", cast=str)

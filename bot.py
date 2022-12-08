@@ -1,11 +1,13 @@
 import json
 import logging
 
+import aiohttp
 import hikari
 from lightbulb import BotApp
 
 from rocket.util import setup_logging
 from rocket.util.config import GUILDS, LOG_LEVEL
+from rocket.twitch import create_twitch_helper
 
 log = logging.getLogger("RocketBot")
 
@@ -26,6 +28,7 @@ class RocketBot(BotApp):
     setup_logging()
 
   async def on_starting(self, event:hikari.Event) -> None:
+    self.d.session = aiohttp.ClientSession()
     log.info("Starting...")
   
   async def on_started(self, event:hikari.Event) -> None:
@@ -33,7 +36,11 @@ class RocketBot(BotApp):
     guilds = [ await event.app.rest.fetch_guild(guild) for guild in self.guilds ]
     log.info("Logged into guilds:\n\t{guilds}".format(guilds="\n\t".join((f"{guild.name} : {guild.id}" for guild in guilds))))
 
+  async def on_shard_ready(self, event:hikari.Event) -> None:
+    helper = await create_twitch_helper(self)
+
   async def on_stopping(self, event:hikari.Event) -> None:
+    await self.d.session.close()
     log.info("Shutting down...")
 
 def create(token:str, log_level:str = LOG_LEVEL) -> RocketBot:
@@ -42,6 +49,7 @@ def create(token:str, log_level:str = LOG_LEVEL) -> RocketBot:
   bot.subscribe(hikari.StartingEvent, bot.on_starting)
   bot.subscribe(hikari.StoppingEvent, bot.on_stopping)
   bot.subscribe(hikari.StartedEvent, bot.on_started)
+  bot.subscribe(hikari.ShardReadyEvent, bot.on_shard_ready)
   # Load extensions
   bot.load_extensions_from("./rocket/extensions/", must_exist=False)
   return bot
