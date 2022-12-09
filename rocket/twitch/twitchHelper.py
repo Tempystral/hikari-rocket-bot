@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import asyncio
-import subprocess
 from logging import getLogger
 
-import aiohttp
 from lightbulb import BotApp
-
 from pyngrok import conf, ngrok
 from pyngrok.ngrok import NgrokTunnel
-from rocket.util.config import (EVENTSUB_PORT, NGROK_CONF, NGROK_PATH,
-                                TWITCH_ID, TWITCH_SECRET)
 from twitchAPI.eventsub import EventSub
 from twitchAPI.helper import first
 from twitchAPI.twitch import Twitch
+
+from rocket.util.config import (EVENTSUB_PORT, NGROK_CONF, NGROK_PATH,
+                                TWITCH_ID, TWITCH_SECRET)
 
 from . import TwitchResponse, TwitchStream
 

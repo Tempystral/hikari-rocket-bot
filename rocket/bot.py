@@ -1,14 +1,12 @@
 import asyncio
-import json
 import logging
 
 import aiohttp
 import hikari
 from lightbulb import BotApp
-from lightbulb.utils import DataStore
 
 from rocket.twitch import TwitchHelper, create_twitch_helper
-from rocket.util import setup_logging
+from rocket.util.logging import setup_logging
 from rocket.util.config import GUILDS, LOG_LEVEL
 
 log = logging.getLogger("rocket.bot")

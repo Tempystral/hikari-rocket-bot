@@ -1,6 +1,6 @@
 from decouple import config
 import json
-import rocket.util
+from .helper import find
 
 def _load_settings(settings_file: str) -> list[dict]:
     settings = None
@@ -20,7 +20,7 @@ ELEVATED_ROLES = [ int(guild["elevated_role"]) for guild in _settings ]
 GUILDS = [ int(guild["guild_id"]) for guild in _settings ]
 
 def get_watchlist(guild:int) -> list[str]:
-  return rocket.util.find(lambda x: guild == x["guild_id"], _settings)[0].get("watching")
+  return find(lambda x: guild == x["guild_id"], _settings)[0].get("watching")
 
 
 TWITCH_ID = config("TWITCH_ID", cast=str)
