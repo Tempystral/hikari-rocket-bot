@@ -15,8 +15,7 @@ from rocket.util.config import (EVENTSUB_PORT, NGROK_CONF, NGROK_PATH,
 from . import TwitchResponse, TwitchStream
 
 log = getLogger("rocket.twitch.helper")
-TARGET_USERNAME = ''
-
+TARGET_USERNAME = 'brossentia'
 
 async def create_twitch_helper(bot:BotApp) -> TwitchHelper:
   helper = TwitchHelper(bot)
@@ -29,6 +28,7 @@ class TwitchHelper:
 
   async def setup(self):
     self.twitch = await Twitch(TWITCH_ID, TWITCH_SECRET)
+    await self.twitch.authenticate_app(scope=[])
     self.ngrok = await self.start_proxy()
 
     # basic setup, will run on port 8888 and a reverse proxy takes care of the https and certificate
@@ -59,6 +59,7 @@ class TwitchHelper:
 
   async def on_follow(self, data: dict):
     log.info(f"New follow {data}")
+    await self._bot.rest.create_message(content=f"New follow {data}", channel=949181725513240576)
 
   def get_live_channels(self, query: str) -> TwitchResponse:
     response = self.twitch.search_channels(query, live_only=True)

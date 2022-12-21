@@ -8,6 +8,8 @@ def setup_logging() -> logging.Logger:
   logger = logging.getLogger()
   logger.setLevel(LOG_LEVEL)
 
+  logging.getLogger("pyngrok.process.ngrok").setLevel(logging.DEBUG)
+
   if not path.exists("./logs"):
     mkdir("./logs")
   

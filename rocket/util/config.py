@@ -1,33 +1,17 @@
-from decouple import config
-import json
-from .helper import find
+import tomli
 
-def _load_settings(settings_file: str) -> list[dict]:
-    settings = None
-    with open(settings_file, "r") as f:
-      settings = json.load(f)
-    return settings["servers"]
+with open("config.toml", "rb") as f:
+  config = tomli.load(f)
 
-def _getall(l: list, key: str) -> list:
-  return [ obj[key] for obj in l ]
+LOG_LEVEL = config.get("LOG_LEVEL")
+CACHE_FILE = config["CACHE"]
+SETTINGS_FILE = config["SETTINGS_FILE"]
 
-LOG_LEVEL = config("LOG_LEVEL", cast=str)
-CACHE_FILE = config("CACHE", cast=str, default="./cache")
-SETTINGS_FILE = config("SETTINGS_FILE", cast=str, default="./settings.json")
-_settings: list = _load_settings(SETTINGS_FILE)
+TWITCH_ID = config["TWITCH_ID"]
+TWITCH_SECRET = config["TWITCH_SECRET"]
+EVENTSUB_PORT = config["EVENTSUB_PORT"]
 
-ELEVATED_ROLES = [ int(guild["elevated_role"]) for guild in _settings ]
-GUILDS = [ int(guild["guild_id"]) for guild in _settings ]
+DISCORD_TOKEN = config["DISCORD_TOKEN"]
 
-def get_watchlist(guild:int) -> list[str]:
-  return find(lambda x: guild == x["guild_id"], _settings)[0].get("watching")
-
-
-TWITCH_ID = config("TWITCH_ID", cast=str)
-TWITCH_SECRET = config("TWITCH_SECRET", cast=str)
-EVENTSUB_PORT = config("EVENTSUB_PORT", cast=int)
-
-DISCORD_TOKEN = config("DISCORD_TOKEN", cast=str)
-
-NGROK_PATH = config("NGROK_PATH", cast=str)
-NGROK_CONF = config("NGROK_CONF", cast=str)
+NGROK_PATH = config["NGROK_PATH"]
+NGROK_CONF = config["NGROK_CONF"]
