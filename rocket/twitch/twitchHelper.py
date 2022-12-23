@@ -9,8 +9,7 @@ from twitchAPI.eventsub import EventSub
 from twitchAPI.helper import first
 from twitchAPI.twitch import Twitch
 
-from rocket.util.config import (EVENTSUB_PORT, NGROK_CONF, NGROK_PATH,
-                                TWITCH_ID, TWITCH_SECRET)
+from rocket.util.config import ServerConfig
 
 from . import TwitchResponse, TwitchStream
 
@@ -25,24 +24,46 @@ async def create_twitch_helper(bot:BotApp) -> TwitchHelper:
 class TwitchHelper:
   def __init__(self, bot:BotApp):
     self._bot = bot
+    self.settings: ServerConfig = bot.d.settings
+
+
+  @property
+  def TWITCH_ID(self):
+    return self.settings.app.twitch_id
+  
+  @property
+  def TWITCH_SECRET(self):
+    return self.settings.app.twitch_secret
+
+  @property
+  def EVENTSUB_PORT(self):
+    return self.settings.app.eventsub_port
+
+  @property
+  def NGROK_PATH(self):
+    return self.settings.app.ngrok_path
+
+  @property
+  def NGROK_CONF(self):
+    return self.settings.app.ngrok_conf
 
   async def setup(self):
-    self.twitch = await Twitch(TWITCH_ID, TWITCH_SECRET)
+    self.twitch = await Twitch(self.TWITCH_ID, self.TWITCH_SECRET)
     await self.twitch.authenticate_app(scope=[])
     self.ngrok = await self.start_proxy()
 
     # basic setup, will run on port 8888 and a reverse proxy takes care of the https and certificate
-    self.event_sub = EventSub(self.ngrok.public_url, TWITCH_ID, EVENTSUB_PORT, self.twitch)
+    self.event_sub = EventSub(self.ngrok.public_url, self.TWITCH_ID, self.EVENTSUB_PORT, self.twitch)
 
   async def shutdown(self):
     ngrok.kill()
     await self.twitch.close()
 
   async def start_proxy(self) -> NgrokTunnel:
-    config = conf.PyngrokConfig(ngrok_path=NGROK_PATH, config_path=NGROK_CONF, ngrok_version="v3")
+    config = conf.PyngrokConfig(ngrok_path=self.NGROK_PATH, config_path=self.NGROK_CONF, ngrok_version="v3")
     conf.set_default(config)
-    tunnel:NgrokTunnel = ngrok.connect(EVENTSUB_PORT, "http", bind_tls=True)
-    log.info(f"Started ngrok tunnel {tunnel.name} on port {EVENTSUB_PORT}")
+    tunnel:NgrokTunnel = ngrok.connect(self.EVENTSUB_PORT, "http", bind_tls=True)
+    log.info(f"Started ngrok tunnel {tunnel.name} on port {self.EVENTSUB_PORT}")
     return tunnel
 
   async def subscribe(self):

@@ -7,28 +7,29 @@ from lightbulb import BotApp
 
 from rocket.twitch import TwitchHelper, create_twitch_helper
 from rocket.util.logging import setup_logging
-from rocket.util.config import GUILDS, LOG_LEVEL
+from rocket.util.config import get_settings
 
 log = logging.getLogger("rocket.bot")
 
 
 class RocketBot(BotApp):
-  def __init__(self, token:str, log_level:str):
-    self.token: str = token
+  def __init__(self, token:str, guilds:list[int], log_level:str):
+    self.token = token
+    self.guilds = guilds
 
-    self.guilds: list = GUILDS
     super().__init__(token=self.token,
                      prefix="$",
                      intents=hikari.Intents.ALL_GUILDS | hikari.Intents.ALL_MESSAGES | hikari.Intents.MESSAGE_CONTENT,
-                     default_enabled_guilds=self.guilds,
+                     default_enabled_guilds=guilds,
                      #banner="bot",
                      logs=True
                     )
     self.d.tasks = set()
-    setup_logging()
+    setup_logging(log_level)
 
   async def on_starting(self, event:hikari.Event) -> None:
     self.d.session = aiohttp.ClientSession()
+    self.d.settings = get_settings()
     log.info("Starting...")
   
   async def on_started(self, event:hikari.Event) -> None:
@@ -49,8 +50,8 @@ class RocketBot(BotApp):
     
     log.info("Shutting down...")
 
-def create(token:str, log_level:str = LOG_LEVEL) -> RocketBot:
-  bot = RocketBot(token, log_level) # init
+def create(token:str, guilds: list[int], log_level:str = "DEBUG") -> RocketBot:
+  bot = RocketBot(token, guilds, log_level) # init
   # Listen for system events
   bot.subscribe(hikari.StartingEvent, bot.on_starting)
   bot.subscribe(hikari.StoppingEvent, bot.on_stopping)
