@@ -102,6 +102,9 @@ class ServerConfig(JSONWizard):
     if guild_id in self.guilds:
       return [userconfig for user in self.get_guild(guild_id).watching if (userconfig := self.get_user(user)) is not None]
     return []
+  
+  def get_all_users(self) -> list[str]:
+    return [user.username for user in self.users]
     
   def get_user(self, user: str) -> UserConfig | None:
     return next(filter(lambda u: u.username == user, self.users), None)

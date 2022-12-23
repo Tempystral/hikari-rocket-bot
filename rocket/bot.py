@@ -39,7 +39,8 @@ class RocketBot(BotApp):
 
   async def on_shard_ready(self, event:hikari.Event) -> None:
     self.d.helper = await create_twitch_helper(self)
-    task = asyncio.create_task(self.d.helper.subscribe())
+    usernames = self.d.settings.get_all_users()
+    task = asyncio.create_task(self.d.helper.subscribe(usernames))
     self.d.get_as("tasks", set).add(task)
     task.add_done_callback(self.d.get_as("tasks", set).discard)
 

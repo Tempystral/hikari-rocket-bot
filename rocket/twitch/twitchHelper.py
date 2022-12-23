@@ -14,7 +14,6 @@ from rocket.util.config import ServerConfig
 from . import TwitchResponse, TwitchStream
 
 log = getLogger("rocket.twitch.helper")
-TARGET_USERNAME = 'brossentia'
 
 async def create_twitch_helper(bot:BotApp) -> TwitchHelper:
   helper = TwitchHelper(bot)
@@ -66,17 +65,20 @@ class TwitchHelper:
     log.info(f"Started ngrok tunnel {tunnel.name} on port {self.EVENTSUB_PORT}")
     return tunnel
 
-  async def subscribe(self):
-    user = await first(self.twitch.get_users(logins=TARGET_USERNAME))
+  async def subscribe(self, usernames: list[str]):
+
+    users = self.twitch.get_users(logins=usernames)
     # unsubscribe from all old events that might still be there
     await self.event_sub.unsubscribe_all()
     # start the eventsub client
     self.event_sub.start()
     log.info("EventSub client started")
 
-    await self.event_sub.listen_channel_follow(user.id, self.on_follow)
-    log.info(f"Listening for follow events for user {user.display_name}")
-    # eventsub will run in its own process
+    async for user in users:
+      # TODO Add error handling here
+      await self.event_sub.listen_channel_follow(user.id, self.on_follow)
+      log.info(f"Listening for follow events for user {user.display_name}")
+      # eventsub will run in its own process
 
   async def on_follow(self, data: dict):
     log.info(f"New follow {data}")
