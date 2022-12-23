@@ -1,27 +1,6 @@
-import functools
 import lightbulb as lb
-from rocket.util.settingsManager import SettingsHelper
-
+from rocket.extensions.checks import has_elevated_role_in_guild
 twitch_plugin = lb.Plugin("notifier")
-
-def _has_elevated_role(context: lb.context.Context) -> bool:
-  lb.checks._guild_only(context)
-  assert context.guild_id is not None
-  assert context.member is not None
-
-  helper:SettingsHelper = context.bot.d.settingsHelper
-  roles = helper.get_guild(context.guild_id).elevated_roles
-  for state in (r in roles for r in context.member.role_ids):
-    if state is True:
-      return state
-  raise lb.errors.MissingRequiredRole(
-    "You are missing one or more roles required to run this command",
-    roles=roles,
-    mode=any)
-  
-
-def has_elevated_role_in_guild() -> lb.Check:
-  return lb.Check(functools.partial(_has_elevated_role))
 
 @twitch_plugin.command
 @lb.add_checks(has_elevated_role_in_guild())
