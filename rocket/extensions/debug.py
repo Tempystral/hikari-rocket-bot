@@ -6,7 +6,7 @@ from rocket.extensions.checks import has_elevated_role_in_guild
 debug_plugin = lb.Plugin("Debug")
 
 @debug_plugin.command
-@lb.add_checks(has_elevated_role_in_guild())
+@lb.add_checks(lb.checks.owner_only)
 @lb.command("debug", "Manage internal settings for the bot", hidden=True)
 @lb.implements(lb.SlashCommandGroup, lb.PrefixCommandGroup)
 async def module_group(ctx: lb.Context) -> None:
