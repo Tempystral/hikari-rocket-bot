@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Coroutine
 
 import aiohttp
 import hikari
@@ -40,9 +41,10 @@ class RocketBot(BotApp):
   async def on_shard_ready(self, event:hikari.Event) -> None:
     self.d.helper = await create_twitch_helper(self)
     usernames = self.d.settings.get_all_users()
-    task = asyncio.create_task(self.d.helper.subscribe(usernames))
-    self.d.get_as("tasks", set).add(task)
-    task.add_done_callback(self.d.get_as("tasks", set).discard)
+    self.create_task(self.d.helper.subscribe(usernames))
+    
+    # TODO: Make this actually take advantage of cooperative processing
+    # Put a task group inside the subscribe method instead of async for
 
   async def on_stopping(self, event:hikari.Event) -> None:
     await self.d.session.close()
@@ -50,6 +52,12 @@ class RocketBot(BotApp):
     asyncio.create_task(helper.shutdown())
     
     log.info("Shutting down...")
+  
+  async def create_task(self, coro: Coroutine) -> asyncio.Task:
+    task = asyncio.create_task(coro)
+    self.d.get_as("tasks", set).add(task)
+    task.add_done_callback(self.d.get_as("tasks", set).discard)
+    return task
 
 def create(token:str, guilds: list[int], log_level:str = "DEBUG") -> RocketBot:
   bot = RocketBot(token, guilds, log_level) # init
