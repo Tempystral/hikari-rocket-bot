@@ -34,17 +34,15 @@ class RocketBot(BotApp):
     log.info("Starting...")
   
   async def on_started(self, event:hikari.Event) -> None:
-    log.info(f"Logged in as: {self.get_me()} with ID: {self.get_me().id}")
+    assert (me := self.get_me()) is not None
+    log.info(f"Logged in as: {me} with ID: {me.id}")
     guilds = [ await event.app.rest.fetch_guild(guild) for guild in self.guilds ]
     log.info("Logged into guilds:\n\t{guilds}".format(guilds="\n\t".join((f"{guild.name} : {guild.id}" for guild in guilds))))
 
   async def on_shard_ready(self, event:hikari.Event) -> None:
     self.d.helper = await create_twitch_helper(self)
-    usernames = self.d.settings.get_all_users()
-    self.create_task(self.d.helper.subscribe(usernames))
-    
-    # TODO: Make this actually take advantage of cooperative processing
-    # Put a task group inside the subscribe method instead of async for
+    usernames: list[str] = self.d.settings.get_all_users()
+    await self.create_task(self.d.helper.subscribe(usernames))
 
   async def on_stopping(self, event:hikari.Event) -> None:
     await self.d.session.close()

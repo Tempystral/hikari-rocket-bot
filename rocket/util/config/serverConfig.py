@@ -84,7 +84,7 @@ class ServerConfig(JSONWizard):
   def add_elevated_role(self, guild_id: int, role: Role):
     if guild_id not in self.guilds:
       raise GuildNotFoundError("Guild is not configured! Please run `!add_guild`")
-    self.guilds[guild_id].elevated_roles.add(role.id)
+    self.guilds[guild_id].elevated_roles.append(role.id)
   
   def remove_elevated_role(self, guild_id: int, role: Role):
     if guild_id not in self.guilds:

@@ -1,7 +1,8 @@
 from lightbulb.errors import LightbulbError
 class RocketBotException(LightbulbError):
-  def __init__(message: str, *args):
-    super(args)
+  def __init__(self, message: str, *args):
+    self.message = message
+    super.__init__(*args)
 
 class GuildExistsError(RocketBotException): ...
 class GuildNotFoundError(RocketBotException): ...
