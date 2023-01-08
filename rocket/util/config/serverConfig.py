@@ -47,6 +47,7 @@ class AppConfig:
   twitch_id:str
   twitch_secret:str
   eventsub_port:int
+  callback_url:str
   discord_token:str
   
   ngrok_path:str
