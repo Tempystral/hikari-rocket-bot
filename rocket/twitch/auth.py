@@ -1,12 +1,14 @@
 import asyncio
-from concurrent.futures import CancelledError
 import logging
+from concurrent.futures import CancelledError
 from threading import Thread
 from time import sleep
+from typing import Coroutine
+
 from aiohttp import web
 from aiohttp.web import AppRunner
-from twitchAPI.helper import TWITCH_AUTH_BASE_URL, build_url, build_scope, get_uuid
 from twitchAPI import Twitch
+from twitchAPI.helper import (TWITCH_AUTH_BASE_URL, build_scope, build_url, get_uuid)
 from twitchAPI.types import AuthScope
 
 log = logging.getLogger("rocket.twitch.auth")
@@ -108,7 +110,7 @@ class AuthServer:
       document = f.read()
     return web.Response(body=document, content_type="text/html")
   
-  async def go(self) -> str | None:
+  async def go(self, message_callback: Coroutine) -> str | None:
     '''
     Starts a webserver to listen for authorization requests from Twitch.
     '''
@@ -119,6 +121,8 @@ class AuthServer:
     self.__start()
     while not self.__is_running:
       sleep(0.01)
+    # Send message with the server URL
+    message = asyncio.create_task(message_callback)
     # Now wait for the user to authenticate OR five minutes
     timer = 0.0
     while self.__user_token is None and timer <= 300:

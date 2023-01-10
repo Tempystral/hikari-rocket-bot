@@ -7,13 +7,13 @@ from hikari import Role, Snowflakeish
 from rocket.util.errors import (GuildExistsError, GuildNotFoundError,
                                 UserNotFoundError)
 
-settings: ServerConfig = None
+settings: ServerConfig | None = None
 
 def _load_settings(file:str) -> ServerConfig:
   settings:ServerConfig
 
   if not os.path.exists(file):
-    settings = ServerConfig(guilds={}, users=[])
+    settings = ServerConfig(AppConfig(), guilds={}, users=[])
     with open(file, "w") as f:
       f.write(settings.to_json())
   else:
@@ -27,16 +27,17 @@ def get_settings(filename:str = "./settings.json") -> ServerConfig:
 
 @dataclass
 class UserConfig:
-  id:int
-  username:str
-  display_name:str
-  user_token:str = ""
-  refresh_token:str = ""
+  username: str
+  id:int | None = None
+  display_name:str | None = None
+  user_token:str | None = None
+  auth_token:str | None = None
+  refresh_token:str | None = None
 
 @dataclass
 class GuildConfig:
+  guild_id:int
   name:str | None = None
-  guild_id:int | None = None
   notification_channel:int | None = None
   everyone:bool = False
   elevated_roles:list[int] = field(default_factory=list)
@@ -44,14 +45,14 @@ class GuildConfig:
 
 @dataclass
 class AppConfig:
-  twitch_id:str
-  twitch_secret:str
-  eventsub_port:int
-  callback_url:str
-  discord_token:str
+  twitch_id:str = ""
+  twitch_secret:str = ""
+  eventsub_port:int = 1234
+  callback_url:str = "localhost"
+  discord_token:str = ""
   
-  ngrok_path:str
-  ngrok_conf:str
+  ngrok_path:str = ""
+  ngrok_conf:str = ""
 
   log_level:str = field(default="INFO")
   cache_file:str = field(default="./cache")
@@ -66,9 +67,10 @@ class ServerConfig(JSONWizard):
   users: list[UserConfig] = field(default_factory=list)
 
   def add_guild(self, guild_id: int):
-    guild = self.guilds.setdefault(guild_id, GuildConfig())
-    if guild:
+    if self.guilds[guild_id]:
       raise GuildExistsError("Guild already exists!")
+    self.guilds.setdefault(guild_id, GuildConfig(guild_id=guild_id))
+    
 
   def set_name(self, guild_id: int, name:str):
     if guild_id not in self.guilds:
@@ -112,3 +114,16 @@ class ServerConfig(JSONWizard):
 
   def get_guild(self, guild_id: int) -> GuildConfig:
     return self.guilds[guild_id]
+
+  def set_user_tokens(self, username: str, user_token: str, auth_token: str, refresh_token: str):
+    if (user := self.get_user(username)):
+      user.user_token = user_token
+      user.auth_token = auth_token
+      user.refresh_token = refresh_token
+    else:
+      user = UserConfig(
+        username=username,
+        user_token=user_token,
+        auth_token=auth_token,
+        refresh_token=refresh_token
+      )

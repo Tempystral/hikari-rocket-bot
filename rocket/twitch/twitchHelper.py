@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 
 from logging import getLogger
+from typing import Coroutine
 
 from lightbulb import BotApp
 from pyngrok import conf, ngrok
@@ -9,7 +10,7 @@ from pyngrok.ngrok import NgrokTunnel
 from twitchAPI.eventsub import EventSub
 from twitchAPI.types import TwitchAPIException
 from twitchAPI.twitch import Twitch, TwitchUser
-from twitchAPI.oauth import UserAuthenticator
+from twitchAPI.oauth import UserAuthenticator, get_user_info
 from rocket.twitch.auth import AuthServer
 
 from rocket.util.config import ServerConfig
@@ -88,56 +89,59 @@ class TwitchHelper:
     asyncio.gather(*coros)
       
   
-  async def authenticate(self, url: str):
+  async def authenticate(self, url: str, callback: Coroutine):
 
     # Start webserver
     # Listen for responses
     # Validate state
     # retrieve user token from response
     # Use UserAuthenticator to get access token and refresh token with the user token
-    userauth = UserAuthenticator(self.twitch, [], force_verify=False)
-    state = userauth.__state
-    authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, state)
+    userauth = UserAuthenticator(self.twitch, [])
+    authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, userauth.state)
 
-    run_server = asyncio.create_task(authserver.go())
-    is_started = asyncio.create_task(authserver.is_started())
-
-    self._bot.d.tasks.add(run_server)
-    self._bot.d.tasks.add(is_started)
-    
-    while not await is_started:
-      asyncio.sleep(0.01)
-    # Send message containing the link to the user
-    token = await run_server
+    user_token = await authserver.go(callback)
     try:
-      access_token, refresh_token = await userauth.authenticate(user_token=token)
+      assert user_token is not None
+      tokens = await userauth.authenticate(user_token=user_token)
+
+      assert tokens is not None
+      (auth_token, refresh_token) = tokens
+      await self.twitch.set_user_authentication(auth_token, [], refresh_token)
+
+      userinfo:dict[str,str] = await get_user_info(tokens[0])
+      if "preferred_username" in userinfo:
+        self.settings.set_user_tokens(userinfo["preferred_username"], user_token, auth_token, refresh_token)
+
     except TwitchAPIException as e:
-      pass
+      log.warning("Failed to authenticate user due to: ", e)
+    except AssertionError as ae:
+      log.warning("One or more tokens were None! ", ae)
+    
 
   async def on_follow(self, data: dict):
     log.info(f"New follow {data}")
     await self._bot.rest.create_message(content=f"New follow {data}", channel=1)
 
-  def get_live_channels(self, query: str) -> TwitchResponse:
-    response = self.twitch.search_channels(query, live_only=True)
-    return TwitchResponse(query, response)
+  # def get_live_channels(self, query: str) -> TwitchResponse:
+  #   response = self.twitch.search_channels(query, live_only=True)
+  #   return TwitchResponse(query, response)
 
-  def get_thumbnail(self, channel:str, width:int, height:int) -> str:
-    data:dict = self.twitch.get_streams(user_login=channel)
-    if not data:
-      log.error("Data not initialized!")
-      return None
-    if not data.get("data"):
-      log.error("No streams found!")
-      return None
-    thumbnail:str = data.get("data")[0].get("thumbnail_url")
-    return thumbnail.replace(r'{width}', str(width)).replace(r'{height}', str(height))
+  # def get_thumbnail(self, channel:str, width:int, height:int) -> str:
+  #   data:dict = self.twitch.get_streams(user_login=channel)
+  #   if not data:
+  #     log.error("Data not initialized!")
+  #     return None
+  #   if not data.get("data"):
+  #     log.error("No streams found!")
+  #     return None
+  #   thumbnail:str = data.get("data")[0].get("thumbnail_url")
+  #   return thumbnail.replace(r'{width}', str(width)).replace(r'{height}', str(height))
 
-  def get_streams(self, twitch_channels:list[str]) -> list[TwitchStream]:
-    return [self.get_live_channels(ch).parse_data() for ch in twitch_channels]
+  # def get_streams(self, twitch_channels:list[str]) -> list[TwitchStream]:
+  #   return [self.get_live_channels(ch).parse_data() for ch in twitch_channels]
 
-  def get_stream(self, channel:str) -> TwitchStream:
-    data = self.get_live_channels(channel).parse_data()
-    if data:
-      log.info(f"Found data for channel: {channel} playing {data.game_name} since {data.started_at}")
-    return data
+  # def get_stream(self, channel:str) -> TwitchStream:
+  #   data = self.get_live_channels(channel).parse_data()
+  #   if data:
+  #     log.info(f"Found data for channel: {channel} playing {data.game_name} since {data.started_at}")
+  #   return data
