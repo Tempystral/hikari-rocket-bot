@@ -6,7 +6,9 @@ def setup_logging(log_level: str) -> logging.Logger:
   logger = logging.getLogger()
   logger.setLevel(log_level)
 
-  logging.getLogger("pyngrok.process.ngrok").setLevel(logging.DEBUG)
+  logging.getLogger("pyngrok").setLevel(logging.INFO)
+  logging.getLogger("hikari").setLevel(logging.INFO)
+  logging.getLogger("lightbulb").setLevel(logging.INFO)
 
   if not path.exists("./logs"):
     mkdir("./logs")

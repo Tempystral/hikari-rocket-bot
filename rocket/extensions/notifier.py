@@ -45,7 +45,7 @@ async def authorize_user(ctx: lb.Context):
   
   if not tokens: # User is not in the list or has invalid tokens
     await ctx.respond(f"You need to authorize Rocketbot with Twitch. Please sign in at <{helper.userauth.return_auth_url()}>", flags=hikari.MessageFlag.EPHEMERAL)
-    tokens = await helper.authenticate(ctx.options.username)
+    tokens = await helper.authenticate()
   
   user = await first(helper.twitch.get_users(logins=[ctx.options.username]))
   
@@ -55,24 +55,12 @@ async def authorize_user(ctx: lb.Context):
     if userinfo.get("sub") == user.id:
       log.debug(f"Verified: {user.display_name} is correct user, adding to list of users")
       settings.set_user_tokens(ctx.options.username, int(user.id), user.display_name, tokens[0], tokens[1])
+      await helper.add_subscription(ctx.options.username)
 
-    #log.warning(user.to_dict(include_none_values=True))
-      
-    log.warning(settings.get_user(ctx.options.username))
-    await ctx.respond(
-      hikari.Embed(description=f"User successfully authenticated!", colour="#6441a5")
-      .set_author(name=user.display_name, icon=user.profile_image_url),
-      flags=hikari.MessageFlag.EPHEMERAL)
-
-  '''
-  - Check to see whether this user is authenticated in this or another server
-    - If they are authenticated in another server, copy the details from that server's list to this one
-    - Attempt to validate the user token
-      - If authentication fails, attempt to refresh the user token with the listed refresh token.
-        - If refresh fails, user is not authenticated
-  - If the user is not authenticated, prompt them to authorize the app
-  - Add a subscription for the user in EventSub
-  '''
+      await ctx.respond(
+        hikari.Embed(description=f"User successfully authenticated!", colour="#6441a5")
+        .set_author(name=user.display_name, icon=user.profile_image_url))
+      return
 
 @twitch_plugin.set_error_handler
 async def on_error(event: lb.events.CommandErrorEvent) -> bool | None:
