@@ -117,3 +117,4 @@ dmypy.json
 cache
 logs/*
 settings.json
+.vscode/launch.json

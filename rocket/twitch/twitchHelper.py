@@ -2,7 +2,6 @@ from __future__ import annotations
 import asyncio
 
 from logging import getLogger
-from typing import Coroutine
 
 from lightbulb import BotApp
 from pyngrok import conf, ngrok
@@ -10,12 +9,11 @@ from pyngrok.ngrok import NgrokTunnel
 from twitchAPI.eventsub import EventSub
 from twitchAPI.types import TwitchAPIException
 from twitchAPI.twitch import Twitch, TwitchUser
-from twitchAPI.oauth import UserAuthenticator, get_user_info
+from twitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token, InvalidRefreshTokenException, UnauthorizedException
 from rocket.twitch.auth import AuthServer
 
 from rocket.util.config import ServerConfig
-
-from . import TwitchResponse, TwitchStream
+from rocket.util.config.serverConfig import UserConfig
 
 log = getLogger("rocket.twitch.helper")
 
@@ -57,6 +55,8 @@ class TwitchHelper:
     self.twitch = await Twitch(self.TWITCH_ID, self.TWITCH_SECRET)
     await self.twitch.authenticate_app(scope=[])
     self.ngrok = self.start_proxy()
+    self.userauth = UserAuthenticator(self.twitch, [])
+    self.authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, self.userauth.state)
 
     # basic setup, will run on port 8888 and a reverse proxy takes care of the https and certificate
     self.event_sub = EventSub(self.ngrok.public_url, self.TWITCH_ID, self.EVENTSUB_PORT, self.twitch)
@@ -89,34 +89,41 @@ class TwitchHelper:
     asyncio.gather(*coros)
       
   
-  async def authenticate(self, url: str, callback: Coroutine):
+  async def authenticate(self, username: str) -> tuple[str, str] | None:
 
     # Start webserver
     # Listen for responses
     # Validate state
     # retrieve user token from response
     # Use UserAuthenticator to get access token and refresh token with the user token
-    userauth = UserAuthenticator(self.twitch, [])
-    authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, userauth.state)
+    # self.userauth = UserAuthenticator(self.twitch, [])
+    self.authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, self.userauth.state)
 
-    user_token = await authserver.go(callback)
+    user_token = await self.authserver.go()
     try:
       assert user_token is not None
-      tokens = await userauth.authenticate(user_token=user_token)
+      tokens = await self.userauth.authenticate(user_token=user_token)
 
       assert tokens is not None
       (auth_token, refresh_token) = tokens
       await self.twitch.set_user_authentication(auth_token, [], refresh_token)
-
-      userinfo:dict[str,str] = await get_user_info(tokens[0])
-      if "preferred_username" in userinfo:
-        self.settings.set_user_tokens(userinfo["preferred_username"], user_token, auth_token, refresh_token)
-
+      return tokens
     except TwitchAPIException as e:
       log.warning("Failed to authenticate user due to: ", e)
     except AssertionError as ae:
       log.warning("One or more tokens were None! ", ae)
     
+  async def validate(self, user: UserConfig) -> tuple[str, str] | None:
+    response = await validate_token(user.auth_token)
+    if "status" in response:
+      try:
+        auth_token, refresh_token = await refresh_access_token(user.refresh_token, self.TWITCH_ID, self.TWITCH_SECRET)
+        return auth_token, refresh_token
+        # self._bot.d.settings.set_user_tokens(user.username, user.user_token, auth_token, refresh_token)
+      except InvalidRefreshTokenException:
+        log.warning(f"Refresh token for {user.username} is invalid, must re-authenticate!")
+      except UnauthorizedException:
+        log.warning(f"Refresh and Auth tokens for {user.username} are invalid, must re-authenticate!")
 
   async def on_follow(self, data: dict):
     log.info(f"New follow {data}")

@@ -3,7 +3,6 @@ import logging
 from concurrent.futures import CancelledError
 from threading import Thread
 from time import sleep
-from typing import Coroutine
 
 from aiohttp import web
 from aiohttp.web import AppRunner
@@ -30,6 +29,7 @@ class AuthServer:
     self.__loop: asyncio.AbstractEventLoop = None
     self.__thread: Thread = None
     self.__runner: web.AppRunner = None
+    self.__server: web.TCPSite = None
 
   def __build_auth_url(self):
     params = {
@@ -56,8 +56,8 @@ class AuthServer:
     asyncio.set_event_loop(self.__loop)
     self.__loop.run_until_complete(runner.setup())
     self.__runner = runner # For persistence I think
-    server = web.TCPSite(runner, host=self.host, port=int(self.port))
-    self.__loop.run_until_complete(server.start())
+    self.__server = web.TCPSite(runner, host=self.host, port=int(self.port), reuse_address=True, reuse_port=True)
+    self.__loop.run_until_complete(self.__server.start())
     self.__is_running = True
     log.debug("Started auth server")
     try:
@@ -73,6 +73,7 @@ class AuthServer:
         pass
     # Else...
     log.debug("Shutting down auth server")
+    await self.__runner.cleanup()
     for task in asyncio.all_tasks(self.__loop):
       log.info("Task cancelled!")
       task.cancel()
@@ -110,7 +111,7 @@ class AuthServer:
       document = f.read()
     return web.Response(body=document, content_type="text/html")
   
-  async def go(self, message_callback: Coroutine) -> str | None:
+  async def go(self) -> str | None:
     '''
     Starts a webserver to listen for authorization requests from Twitch.
     '''
@@ -121,8 +122,6 @@ class AuthServer:
     self.__start()
     while not self.__is_running:
       sleep(0.01)
-    # Send message with the server URL
-    message = asyncio.create_task(message_callback)
     # Now wait for the user to authenticate OR five minutes
     timer = 0.0
     while self.__user_token is None and timer <= 300:
