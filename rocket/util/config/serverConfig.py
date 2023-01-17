@@ -20,7 +20,7 @@ def _load_settings(file:str) -> ServerConfig:
   settings:ServerConfig
 
   if not os.path.exists(file):
-    settings = ServerConfig(AppConfig(), guilds={}, users=[])
+    settings = ServerConfig(AppConfig(), guilds={}, users=set())
     with open(file, "w") as f:
       f.write(settings.to_json())
   else:
