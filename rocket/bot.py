@@ -20,7 +20,7 @@ class RocketBot(BotApp):
 
     super().__init__(token=self.token,
                      prefix="$",
-                     intents=hikari.Intents.ALL_GUILDS | hikari.Intents.ALL_MESSAGES | hikari.Intents.MESSAGE_CONTENT,
+                     intents=hikari.Intents.ALL_GUILDS | hikari.Intents.ALL_MESSAGES | hikari.Intents.MESSAGE_CONTENT | hikari.Intents.ALL_UNPRIVILEGED ,
                      default_enabled_guilds=guilds,
                      #banner="bot",
                      logs=True
