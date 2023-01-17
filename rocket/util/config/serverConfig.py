@@ -1,11 +1,18 @@
 from __future__ import annotations
+
 import json
+from logging import getLogger
 import os
 from dataclasses import dataclass, field
-from dataclass_wizard import JSONWizard
+
 from hikari import Role, Snowflakeish
+from hikari.channels import GuildChannel
+
+from dataclass_wizard import JSONWizard
 from rocket.util.errors import (GuildExistsError, GuildNotFoundError,
                                 UserNotFoundError)
+
+log = getLogger("rocket.util.config")
 
 settings: ServerConfig | None = None
 
@@ -25,23 +32,23 @@ def _load_settings(file:str) -> ServerConfig:
 def get_settings(filename:str = "./settings.json") -> ServerConfig:
   return settings if settings else _load_settings(filename)
 
-@dataclass
+@dataclass(frozen=True)
 class UserConfig:
   username: str
-  id:int | None = None
-  display_name:str | None = None
-  user_token:str | None = None
-  auth_token:str | None = None
-  refresh_token:str | None = None
+  id:int
+  display_name:str
+  #user_token:str
+  auth_token:str
+  refresh_token:str
 
 @dataclass
 class GuildConfig:
   guild_id:int
+  streamer_role:int | None = None
   name:str | None = None
   notification_channel:int | None = None
   everyone:bool = False
-  elevated_roles:list[int] = field(default_factory=list)
-  watching:list[str] = field(default_factory=list)
+  watching:set[str] = field(default_factory=set)
 
 @dataclass
 class AppConfig:
@@ -64,42 +71,35 @@ class ServerConfig(JSONWizard):
 
   app: AppConfig
   guilds: dict[int, GuildConfig] = field(default_factory=dict)
-  users: list[UserConfig] = field(default_factory=list)
+  users: set[UserConfig] = field(default_factory=set)
 
-  def add_guild(self, guild_id: int):
-    if self.guilds[guild_id]:
+  def add_guild(self, guild_id: int, guild_name: str):
+    if guild_id in self.guilds:
       raise GuildExistsError("Guild already exists!")
-    self.guilds.setdefault(guild_id, GuildConfig(guild_id=guild_id))
+    self.guilds.setdefault(guild_id, GuildConfig(guild_id=guild_id, name=guild_name))
+  
+  def add_user(self, guild_id: int, username: str):
+    self.__guild_exists(guild_id)
+    self.guilds[guild_id].watching.add(username)
     
-
   def set_name(self, guild_id: int, name:str):
-    if guild_id not in self.guilds:
-      raise GuildNotFoundError("Guild is not configured! Please run `!add_guild`")
+    self.__guild_exists(guild_id)
     self.guilds[guild_id].name = name
 
-  def set_notification_channel(self, guild_id: int, channel: Snowflakeish):
-    if guild_id not in self.guilds:
-      raise GuildNotFoundError("Guild is not configured! Please run `!add_guild`")
-    self.guilds[guild_id].notification_channel = channel
+  def set_notification_channel(self, guild_id: int, channel: GuildChannel):
+    self.__guild_exists(guild_id)
+    self.guilds[guild_id].notification_channel = channel.id
+    return channel.id
 
-
-  def add_elevated_role(self, guild_id: int, role: Role):
-    if guild_id not in self.guilds:
-      raise GuildNotFoundError("Guild is not configured! Please run `!add_guild`")
-    self.guilds[guild_id].elevated_roles.append(role.id)
-  
-  def remove_elevated_role(self, guild_id: int, role: Role):
-    if guild_id not in self.guilds:
-      raise GuildNotFoundError("Guild is not configured! Please run `!add_guild`")
-    try:
-      self.guilds[guild_id].elevated_roles.remove(role.id)
-    except ValueError as e:
-      raise UserNotFoundError("User not found.")
+  def set_streamer_role(self, guild_id: int, role: Role):
+    self.__guild_exists(guild_id)
+    self.guilds[guild_id].streamer_role = role.id
+    return role.id
   
   def set_notify(self, guild_id: int, notify:bool):
-    if guild_id not in self.guilds:
-      raise GuildNotFoundError("Guild is not configured! Please run `!add_guild`")
+    self.__guild_exists(guild_id)
     self.guilds[guild_id].everyone = notify
+    return notify
   
   def get_users(self, guild_id: int) -> list[UserConfig]:
     if guild_id in self.guilds:
@@ -113,17 +113,24 @@ class ServerConfig(JSONWizard):
     return next(filter(lambda u: u.username == user, self.users), None)
 
   def get_guild(self, guild_id: int) -> GuildConfig:
+    self.__guild_exists(guild_id)
     return self.guilds[guild_id]
 
-  def set_user_tokens(self, username: str, user_token: str, auth_token: str, refresh_token: str):
+  def set_user_tokens(self, username: str, user_id: int, display_name: str, auth_token: str, refresh_token: str):
     if (user := self.get_user(username)):
-      user.user_token = user_token
-      user.auth_token = auth_token
-      user.refresh_token = refresh_token
-    else:
-      user = UserConfig(
-        username=username,
-        user_token=user_token,
-        auth_token=auth_token,
-        refresh_token=refresh_token
-      )
+      log.debug(f"Removing user {user.username}")
+      self.users.remove(user) # Remove the existing user object first
+
+    self.users.add(
+      UserConfig(
+      username=username,
+      id=user_id,
+      display_name=display_name,
+      #user_token=user_token,
+      auth_token=auth_token,
+      refresh_token=refresh_token)
+    )
+    
+  def __guild_exists(self, guild_id):
+    if guild_id not in self.guilds:
+      raise GuildNotFoundError("Guild is not configured! Please run `/admin setup`")
