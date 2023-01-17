@@ -1,17 +1,23 @@
 from __future__ import annotations
-import asyncio
 
+import asyncio
+import uuid
 from logging import getLogger
 
+from hikari.embeds import Embed
+from hikari.errors import NotFoundError
 from lightbulb import BotApp
 from pyngrok import conf, ngrok
 from pyngrok.ngrok import NgrokTunnel
 from twitchAPI.eventsub import EventSub
-from twitchAPI.types import TwitchAPIException
-from twitchAPI.twitch import Twitch, TwitchUser
-from twitchAPI.oauth import UserAuthenticator, validate_token, refresh_access_token, InvalidRefreshTokenException, UnauthorizedException
-from rocket.twitch.auth import AuthServer
+from twitchAPI.helper import first
+from twitchAPI.oauth import (InvalidRefreshTokenException,
+                             UnauthorizedException, UserAuthenticator,
+                             refresh_access_token, validate_token)
+from twitchAPI.twitch import Stream, Twitch, TwitchUser
+from twitchAPI.types import EventSubSubscriptionError, TwitchAPIException
 
+from rocket.twitch.auth import AuthServer
 from rocket.util.config import ServerConfig
 from rocket.util.config.serverConfig import UserConfig
 
@@ -72,6 +78,13 @@ class TwitchHelper:
     log.info(f"Started ngrok tunnel {tunnel.name} on port {self.EVENTSUB_PORT}")
     return tunnel
 
+  async def __listen_online(self, user: TwitchUser):
+    try:  
+      await self.event_sub.listen_stream_online(user.id, self.on_start_streaming)
+      log.info(f"Listening for online events for user {user.display_name}")
+    except EventSubSubscriptionError as e:
+      log.warning(f"Already listening for online events from user {user.display_name}")
+
   async def subscribe(self, usernames: list[str]):
     users = self.twitch.get_users(logins=usernames)
     # unsubscribe from all old events that might still be there
@@ -80,23 +93,16 @@ class TwitchHelper:
     self.event_sub.start()
     log.info("EventSub client started")
 
-    async def follow(user: TwitchUser):
-      # TODO add error handling
-      await self.event_sub.listen_channel_follow(user.id, self.on_follow)
-      log.info(f"Listening for follow events for user {user.display_name}")
-
-    coros = [follow(user) async for user in users]
+    coros = [self.__listen_online(user) async for user in users]
     asyncio.gather(*coros)
-      
   
-  async def authenticate(self, username: str) -> tuple[str, str] | None:
+  async def add_subscription(self, username: str):
+    user = await first(self.twitch.get_users(logins=[username]))
+    if user:
+      await self.__listen_online(user)
 
-    # Start webserver
-    # Listen for responses
-    # Validate state
-    # retrieve user token from response
-    # Use UserAuthenticator to get access token and refresh token with the user token
-    # self.userauth = UserAuthenticator(self.twitch, [])
+  
+  async def authenticate(self) -> tuple[str, str] | None:
     self.authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, self.userauth.state)
 
     user_token = await self.authserver.go()
@@ -124,31 +130,33 @@ class TwitchHelper:
         log.warning(f"Refresh token for {user.username} is invalid, must re-authenticate!")
       except UnauthorizedException:
         log.warning(f"Refresh and Auth tokens for {user.username} are invalid, must re-authenticate!")
+  
+  def create_thumbnail(self, stream: Stream, width:int, height:int) -> str:
+    return stream.thumbnail_url.replace(r'{width}', str(width)).replace(r'{height}', str(height))
 
-  async def on_follow(self, data: dict):
-    log.info(f"New follow {data}")
-    await self._bot.rest.create_message(content=f"New follow {data}", channel=1)
+  async def on_start_streaming(self, data: dict):
+    username = data['event']['broadcaster_user_login']
+    display_name = data['event']['broadcaster_user_name']
+    user_id = data['event']['broadcaster_user_id']
+    log.info(f"User has started streaming: {username}")
 
-  # def get_live_channels(self, query: str) -> TwitchResponse:
-  #   response = self.twitch.search_channels(query, live_only=True)
-  #   return TwitchResponse(query, response)
+    stream = await first(self.twitch.get_streams(user_id=[user_id]))
+    if stream:
+      notif = (
+        Embed(title=f"{stream.title}", url=f"https://www.twitch.tv/{stream.user_login}", colour="#9146FF")
+        .set_image(self.create_thumbnail(stream, 1280, 720))
+        .set_author(name=display_name, icon=f"{stream.thumbnail_url}#{str(uuid.uuid4())}")
+        .add_field(name="Game", value=stream.game_name, inline=True)
+        .add_field(name="Started at", value=f"<t:{int(stream.started_at.timestamp())}>", inline=True)
+      )
 
-  # def get_thumbnail(self, channel:str, width:int, height:int) -> str:
-  #   data:dict = self.twitch.get_streams(user_login=channel)
-  #   if not data:
-  #     log.error("Data not initialized!")
-  #     return None
-  #   if not data.get("data"):
-  #     log.error("No streams found!")
-  #     return None
-  #   thumbnail:str = data.get("data")[0].get("thumbnail_url")
-  #   return thumbnail.replace(r'{width}', str(width)).replace(r'{height}', str(height))
-
-  # def get_streams(self, twitch_channels:list[str]) -> list[TwitchStream]:
-  #   return [self.get_live_channels(ch).parse_data() for ch in twitch_channels]
-
-  # def get_stream(self, channel:str) -> TwitchStream:
-  #   data = self.get_live_channels(channel).parse_data()
-  #   if data:
-  #     log.info(f"Found data for channel: {channel} playing {data.game_name} since {data.started_at}")
-  #   return data
+    for guild in self.settings.guilds.values():
+      if guild.notification_channel and username in guild.watching:
+        try:
+          await self._bot.rest.create_message(
+            channel=guild.notification_channel,
+            content=f"{'@everyone, ' if guild.everyone else ''}{username} is live!")
+          return
+        except NotFoundError:
+          pass
+      log.warning(f"Guild {guild.name} had an improperly-configured channel!")
