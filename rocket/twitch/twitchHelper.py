@@ -15,7 +15,7 @@ from twitchAPI.oauth import (InvalidRefreshTokenException,
                              UnauthorizedException, UserAuthenticator,
                              refresh_access_token, validate_token)
 from twitchAPI.twitch import Stream, Twitch, TwitchUser
-from twitchAPI.types import EventSubSubscriptionError, TwitchAPIException
+from twitchAPI.types import EventSubSubscriptionConflict, TwitchAPIException
 
 from rocket.twitch.auth import AuthServer
 from rocket.util.config import ServerConfig
@@ -82,7 +82,7 @@ class TwitchHelper:
     try:  
       await self.event_sub.listen_stream_online(user.id, self.on_start_streaming)
       log.info(f"Listening for online events for user {user.display_name}")
-    except EventSubSubscriptionError as e:
+    except EventSubSubscriptionConflict as e:
       log.warning(f"Already listening for online events from user {user.display_name}")
 
   async def subscribe(self, usernames: list[str]):
@@ -121,7 +121,7 @@ class TwitchHelper:
     
   async def validate(self, user: UserConfig) -> tuple[str, str] | None:
     response = await validate_token(user.auth_token)
-    if "status" in response:
+    if "status" in response: # Invalid auth token
       try:
         auth_token, refresh_token = await refresh_access_token(user.refresh_token, self.TWITCH_ID, self.TWITCH_SECRET)
         return auth_token, refresh_token
@@ -130,6 +130,8 @@ class TwitchHelper:
         log.warning(f"Refresh token for {user.username} is invalid, must re-authenticate!")
       except UnauthorizedException:
         log.warning(f"Refresh and Auth tokens for {user.username} are invalid, must re-authenticate!")
+    else: # Valid tokens
+      return user.auth_token, user.refresh_token
   
   def create_thumbnail(self, stream: Stream, width:int, height:int) -> str:
     return stream.thumbnail_url.replace(r'{width}', str(width)).replace(r'{height}', str(height))

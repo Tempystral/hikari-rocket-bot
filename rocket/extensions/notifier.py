@@ -10,9 +10,9 @@ from rocket.twitch import TwitchHelper
 from rocket.util.config import ServerConfig
 from rocket.util.errors import RocketBotException
 
-log = getLogger("rocket.extensions.twitch")
+log = getLogger("rocket.extensions.notifier")
 
-twitch_plugin = lb.Plugin("twitch")
+twitch_plugin = lb.Plugin("notifier")
 
 @twitch_plugin.command
 @lb.add_checks(has_elevated_role_in_guild())
@@ -23,7 +23,7 @@ async def twitch_group(ctx: lb.Context) -> None:
 
 @twitch_group.child
 @lb.option("username", "Your Twitch username", type=str)
-@lb.command("authorize", "Perform Twitch-related actions", aliases=["auth"], hidden=False)
+@lb.command("authenticate", "Perform Twitch-related actions", aliases=["auth"], hidden=False)
 @lb.implements(lb.SlashSubCommand, lb.PrefixSubCommand)
 async def authorize_user(ctx: lb.Context):
   helper: TwitchHelper = ctx.bot.d.helper
@@ -54,7 +54,7 @@ async def authorize_user(ctx: lb.Context):
     log.debug(f"User retrieved: {userinfo.get('preferred_username')} | id: {userinfo.get('sub')}")
     if userinfo.get("sub") == user.id:
       log.debug(f"Verified: {user.display_name} is correct user, adding to list of users")
-      settings.set_user_tokens(ctx.options.username, int(user.id), user.display_name, tokens[0], tokens[1])
+      settings.update_user(ctx.options.username, int(user.id), user.display_name, tokens[0], tokens[1])
       await helper.add_subscription(ctx.options.username)
 
       await ctx.respond(
