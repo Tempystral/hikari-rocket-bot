@@ -5,7 +5,7 @@ from logging import getLogger
 import os
 from dataclasses import dataclass, field
 
-from hikari import Role, Snowflakeish
+from hikari import Role
 from hikari.channels import GuildChannel
 
 from dataclass_wizard import JSONWizard
@@ -16,9 +16,12 @@ log = getLogger("rocket.util.config")
 
 settings: ServerConfig | None = None
 
-def _load_settings(file:str) -> ServerConfig:
-  settings:ServerConfig
+def _save_settings(settings: ServerConfig, file:str = "./settings.json") -> None:
+  options = "w" if os.path.exists(file) else "x"
+  with open(file, options) as f:
+    f.write(settings.to_json())
 
+def _load_settings(file:str) -> ServerConfig:
   if not os.path.exists(file):
     settings = ServerConfig(AppConfig(), guilds={}, users=set())
     with open(file, "w") as f:
@@ -34,19 +37,18 @@ def get_settings(filename:str = "./settings.json") -> ServerConfig:
 
 @dataclass(frozen=True)
 class UserConfig:
-  username: str
   id:int
+  username: str
   display_name:str
-  #user_token:str
   auth_token:str
   refresh_token:str
 
 @dataclass
 class GuildConfig:
+  name:str
   guild_id:int
-  streamer_role:int | None = None
-  name:str | None = None
   notification_channel:int | None = None
+  streamer_role:int | None = None
   everyone:bool = False
   watching:set[str] = field(default_factory=set)
 
@@ -68,10 +70,14 @@ class AppConfig:
 class ServerConfig(JSONWizard):
   class _(JSONWizard.Meta):
     key_transform_with_load = "SNAKE"
+    key_transform_with_dump = "SNAKE"
 
   app: AppConfig
   guilds: dict[int, GuildConfig] = field(default_factory=dict)
   users: set[UserConfig] = field(default_factory=set)
+
+  def save(self, file: str | None = None) -> None:
+    _save_settings(self, file) if file else _save_settings(self)
 
   def add_guild(self, guild_id: int, guild_name: str):
     if guild_id in self.guilds:
@@ -116,7 +122,7 @@ class ServerConfig(JSONWizard):
     self.__guild_exists(guild_id)
     return self.guilds[guild_id]
 
-  def set_user_tokens(self, username: str, user_id: int, display_name: str, auth_token: str, refresh_token: str):
+  def update_user(self, username: str, user_id: int, display_name: str, auth_token: str, refresh_token: str):
     if (user := self.get_user(username)):
       log.debug(f"Removing user {user.username}")
       self.users.remove(user) # Remove the existing user object first

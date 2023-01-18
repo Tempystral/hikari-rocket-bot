@@ -48,7 +48,8 @@ class RocketBot(BotApp):
     await self.d.session.close()
     helper:TwitchHelper = self.d.helper
     asyncio.create_task(helper.shutdown())
-    
+    log.info("Saving data...")
+    self.d.settings.save()
     log.info("Shutting down...")
   
   async def create_task(self, coro: Coroutine) -> asyncio.Task:
