@@ -118,3 +118,4 @@ cache
 logs/*
 settings.json
 .vscode/launch.json
+test.py
