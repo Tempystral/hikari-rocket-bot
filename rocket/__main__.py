@@ -10,10 +10,10 @@ if __name__ == "__main__":
 
   settings = get_settings()
 
-  bot = bot.create(
+  rocket = bot.create(
     settings.app.discord_token,
     [*settings.guilds],
     settings.app.log_level
   )
 
-  bot.run()
+  rocket.run()

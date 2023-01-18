@@ -143,21 +143,27 @@ class TwitchHelper:
     log.info(f"User has started streaming: {username}")
 
     stream = await first(self.twitch.get_streams(user_id=[user_id]))
-    if stream:
-      notif = (
-        Embed(title=f"{stream.title}", url=f"https://www.twitch.tv/{stream.user_login}", colour="#9146FF")
-        .set_image(self.create_thumbnail(stream, 1280, 720))
-        .set_author(name=display_name, icon=f"{stream.thumbnail_url}#{str(uuid.uuid4())}")
-        .add_field(name="Game", value=stream.game_name, inline=True)
-        .add_field(name="Started at", value=f"<t:{int(stream.started_at.timestamp())}>", inline=True)
-      )
+    if stream is None:
+      log.warning("Could not retrieve info for user!")
+      return
+    log.debug("Retrieved info for user!")
+    notif = (
+      Embed(title=f"{stream.title}", url=f"https://www.twitch.tv/{stream.user_login}", colour="#9146FF")
+      .set_image(self.create_thumbnail(stream, 1280, 720))
+      .set_author(name=display_name, icon=f"{stream.thumbnail_url}#{str(uuid.uuid4())}")
+      .add_field(name="Game", value=stream.game_name, inline=True)
+      .add_field(name="Started at", value=f"<t:{int(stream.started_at.timestamp())}>", inline=True)
+    )
 
     for guild in self.settings.guilds.values():
       if guild.notification_channel and username in guild.watching:
         try:
           await self._bot.rest.create_message(
             channel=guild.notification_channel,
-            content=f"{'@everyone, ' if guild.everyone else ''}{username} is live!")
+            content=f"{'@everyone, ' if guild.everyone else ''}{username} is live!",
+            embed=notif)
+          #self._bot.d.get_as("tasks", set).add(msg_task)
+          #msg_task.add_done_callback(self._bot.d.get_as("tasks", set).discard)
           return
         except NotFoundError:
           pass
