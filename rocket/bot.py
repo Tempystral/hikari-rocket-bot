@@ -1,10 +1,12 @@
 import asyncio
 import logging
+import queue
 from typing import Coroutine
 
 import aiohttp
 import hikari
 from lightbulb import BotApp
+from lightbulb.ext import tasks
 
 from rocket.twitch import TwitchHelper, create_twitch_helper
 from rocket.util.logging import setup_logging
@@ -25,12 +27,16 @@ class RocketBot(BotApp):
                      #banner="bot",
                      logs=True
                     )
+
+    self.d.session = aiohttp.ClientSession()
+    self.d.settings = get_settings()
+    self.d.helper = create_twitch_helper(self)
     self.d.tasks = set()
+    self.d.msgQueue = queue.Queue()
     setup_logging(log_level)
 
   async def on_starting(self, event:hikari.Event) -> None:
-    self.d.session = aiohttp.ClientSession()
-    self.d.settings = get_settings()
+    
     log.info("Starting...")
   
   async def on_started(self, event:hikari.Event) -> None:
@@ -40,7 +46,6 @@ class RocketBot(BotApp):
     log.info("Logged into guilds:\n\t{guilds}".format(guilds="\n\t".join((f"{guild.name} : {guild.id}" for guild in guilds))))
 
   async def on_shard_ready(self, event:hikari.Event) -> None:
-    self.d.helper = await create_twitch_helper(self)
     usernames: list[str] = self.d.settings.get_all_users()
     await self.create_task(self.d.helper.subscribe(usernames))
 
@@ -67,4 +72,5 @@ def create(token:str, guilds: list[int], log_level:str = "DEBUG") -> RocketBot:
   bot.subscribe(hikari.ShardReadyEvent, bot.on_shard_ready)
   # Load extensions
   bot.load_extensions_from("./rocket/extensions/", must_exist=False)
+  tasks.load(bot)
   return bot
