@@ -27,41 +27,40 @@ log = getLogger("rocket.twitch.helper")
 
 def create_twitch_helper(bot:BotApp) -> TwitchHelper:
   helper = TwitchHelper(bot)
-  asyncio.gather(helper.setup())
+  asyncio.run(helper.setup())
   return helper
 
 class TwitchHelper:
   def __init__(self, bot:BotApp):
     self._bot = bot
-    self.settings: ServerConfig = bot.d.settings
 
   @property
   def TWITCH_ID(self):
-    return self.settings.app.twitch_id
+    return self._bot.d.settings.app.twitch_id
   
   @property
   def TWITCH_SECRET(self):
-    return self.settings.app.twitch_secret
+    return self._bot.d.settings.app.twitch_secret
 
   @property
   def EVENTSUB_PORT(self):
-    return self.settings.app.eventsub_port
+    return self._bot.d.settings.app.eventsub_port
 
   @property
   def NGROK_PATH(self):
-    return self.settings.app.ngrok_path
+    return self._bot.d.settings.app.ngrok_path
 
   @property
   def NGROK_CONF(self):
-    return self.settings.app.ngrok_conf
+    return self._bot.d.settings.app.ngrok_conf
   
   @property
   def CALLBACK_URL(self):
-    return self.settings.app.callback_url
+    return self._bot.d.settings.app.callback_url
 
   async def setup(self):
-    self.twitch = Twitch(self.TWITCH_ID, self.TWITCH_SECRET)
-    await self.twitch.authenticate_app(scope=[])
+    self.twitch = await Twitch(self.TWITCH_ID, self.TWITCH_SECRET)
+    #await self.twitch.authenticate_app(scope=[])
     self.ngrok = self.start_proxy()
     self.userauth = UserAuthenticator(self.twitch, [])
     self.authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, self.userauth.state)
