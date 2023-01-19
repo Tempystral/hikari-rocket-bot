@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+from queue import Queue
 import uuid
 from logging import getLogger
 
 from hikari.embeds import Embed
 from hikari.errors import NotFoundError
 from lightbulb import BotApp
+from lightbulb.ext import tasks
 from pyngrok import conf, ngrok
 from pyngrok.ngrok import NgrokTunnel
 from twitchAPI.eventsub import EventSub
@@ -23,9 +25,9 @@ from rocket.util.config.serverConfig import UserConfig
 
 log = getLogger("rocket.twitch.helper")
 
-async def create_twitch_helper(bot:BotApp) -> TwitchHelper:
+def create_twitch_helper(bot:BotApp) -> TwitchHelper:
   helper = TwitchHelper(bot)
-  await helper.setup()
+  asyncio.gather(helper.setup())
   return helper
 
 class TwitchHelper:
@@ -58,7 +60,7 @@ class TwitchHelper:
     return self.settings.app.callback_url
 
   async def setup(self):
-    self.twitch = await Twitch(self.TWITCH_ID, self.TWITCH_SECRET)
+    self.twitch = Twitch(self.TWITCH_ID, self.TWITCH_SECRET)
     await self.twitch.authenticate_app(scope=[])
     self.ngrok = self.start_proxy()
     self.userauth = UserAuthenticator(self.twitch, [])
@@ -133,38 +135,12 @@ class TwitchHelper:
     else: # Valid tokens
       return user.auth_token, user.refresh_token
   
-  def create_thumbnail(self, stream: Stream, width:int, height:int) -> str:
-    return stream.thumbnail_url.replace(r'{width}', str(width)).replace(r'{height}', str(height))
+  def create_thumbnail(self, username:str, width:int, height:int) -> str:
+    return rf'https://static-cdn.jtvnw.net/previews-ttv/live_user_{username}-{width}x{height}.jpg#{str(uuid.uuid4())}'
 
   async def on_start_streaming(self, data: dict):
     username = data['event']['broadcaster_user_login']
-    display_name = data['event']['broadcaster_user_name']
     user_id = data['event']['broadcaster_user_id']
     log.info(f"User has started streaming: {username}")
-
-    stream = await first(self.twitch.get_streams(user_id=[user_id]))
-    if stream is None:
-      log.warning("Could not retrieve info for user!")
-      return
-    log.debug("Retrieved info for user!")
-    notif = (
-      Embed(title=f"{stream.title}", url=f"https://www.twitch.tv/{stream.user_login}", colour="#9146FF")
-      .set_image(self.create_thumbnail(stream, 1280, 720))
-      .set_author(name=display_name, icon=f"{stream.thumbnail_url}#{str(uuid.uuid4())}")
-      .add_field(name="Game", value=stream.game_name, inline=True)
-      .add_field(name="Started at", value=f"<t:{int(stream.started_at.timestamp())}>", inline=True)
-    )
-
-    for guild in self.settings.guilds.values():
-      if guild.notification_channel and username in guild.watching:
-        try:
-          await self._bot.rest.create_message(
-            channel=guild.notification_channel,
-            content=f"{'@everyone, ' if guild.everyone else ''}{username} is live!",
-            embed=notif)
-          #self._bot.d.get_as("tasks", set).add(msg_task)
-          #msg_task.add_done_callback(self._bot.d.get_as("tasks", set).discard)
-          return
-        except NotFoundError:
-          pass
-      log.warning(f"Guild {guild.name} had an improperly-configured channel!")
+    queue = self._bot.d.get_as("msgQueue", Queue)
+    queue.put(user_id)
