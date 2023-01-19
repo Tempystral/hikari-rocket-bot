@@ -1,7 +1,7 @@
 import lightbulb as lb
 from hikari import MessageFlag
 from rocket.util.config import ServerConfig
-from rocket.extensions.checks import has_elevated_role_in_guild
+from rocket.extensions.checks import has_streamer_role_in_guild
 
 debug_plugin = lb.Plugin("Debug")
 
