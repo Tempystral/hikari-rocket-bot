@@ -22,7 +22,7 @@ class RocketBot(BotApp):
 
     super().__init__(token=self.token,
                      prefix="$",
-                     intents=hikari.Intents.ALL_GUILDS | hikari.Intents.ALL_MESSAGES | hikari.Intents.MESSAGE_CONTENT | hikari.Intents.ALL_UNPRIVILEGED ,
+                     intents=hikari.Intents.GUILDS | hikari.Intents.GUILD_MESSAGES | hikari.Intents.GUILD_EMOJIS | hikari.Intents.GUILD_MESSAGE_REACTIONS | hikari.Intents.MESSAGE_CONTENT | hikari.Intents.GUILD_MEMBERS,
                      default_enabled_guilds=guilds,
                      #banner="bot",
                      logs=True
@@ -36,11 +36,11 @@ class RocketBot(BotApp):
     setup_logging(log_level)
 
   async def on_starting(self, event:hikari.Event) -> None:
-    
     log.info("Starting...")
   
   async def on_started(self, event:hikari.Event) -> None:
-    assert (me := self.get_me()) is not None
+    me = self.get_me()
+    assert me is not None
     log.info(f"Logged in as: {me} with ID: {me.id}")
     guilds = [ await event.app.rest.fetch_guild(guild) for guild in self.guilds ]
     log.info("Logged into guilds:\n\t{guilds}".format(guilds="\n\t".join((f"{guild.name} : {guild.id}" for guild in guilds))))

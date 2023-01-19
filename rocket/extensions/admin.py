@@ -52,8 +52,8 @@ async def set_notification_channel(ctx: lb.Context):
 async def set_everyone(ctx: lb.Context):
   settings: ServerConfig = ctx.bot.d.settings
   assert ctx.guild_id
-  notify = settings.set_notify(ctx.guild_id, ctx.options.everyone)
-  await ctx.respond(f"Bot will ping server: **{notify}**")
+  notify = settings.set_notify(ctx.guild_id, ctx.options.option)
+  await ctx.respond(f"Bot will ping server: **{str(notify)}**")
 
 @admin_group.child
 @lb.option("everyone", "Whether or not to notify @everyone", type=bool)

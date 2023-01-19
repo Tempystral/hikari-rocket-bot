@@ -91,7 +91,7 @@ async def twitch_event(bot: lb.BotApp):
         .set_image(helper.create_thumbnail(channel.broadcaster_login, 1280, 720))
         .set_author(name=channel.broadcaster_name, icon=user.profile_image_url, url=f"https://www.twitch.tv/{channel.broadcaster_login}")
         .add_field(name="Game", value=channel.game_name, inline=True)
-        .add_field(name="Tags", value=" ".join((f"`{tag}`" for tag in channel.tags)))
+        .add_field(name="Tags", value=" ".join((f"`{tag}`" for tag in channel.tags)), inline=True)
         # .add_field(name="Started at", value=f"<t:{int(stream.started_at.timestamp())}>", inline=True)
       )
       
