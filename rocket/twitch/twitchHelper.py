@@ -135,7 +135,7 @@ class TwitchHelper:
       return user.auth_token, user.refresh_token
   
   def create_thumbnail(self, username:str, width:int, height:int) -> str:
-    return rf'https://static-cdn.jtvnw.net/previews-ttv/live_user_{username}-{width}x{height}.jpg#{str(uuid.uuid4())}'
+    return rf'https://static-cdn.jtvnw.net/previews-ttv/live_user_{username}-{width}x{height}.jpg?v={str(uuid.uuid4())}'
 
   async def on_start_streaming(self, data: dict):
     username = data['event']['broadcaster_user_login']
