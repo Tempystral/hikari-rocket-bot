@@ -73,7 +73,7 @@ class TwitchHelper:
     else:
       self.ngrok = self.start_proxy()
       public_url = self.ngrok.public_url
-    self.userauth = UserAuthenticator(self.twitch, [])
+    self.userauth = UserAuthenticator(self.twitch, [], url=self.OAUTH_URL)
     self.authserver = AuthServer(self.twitch, [], self.OAUTH_URL, self.OAUTH_PORT, self.userauth.state)
 
     # basic setup, will run on port 8888 and a reverse proxy takes care of the https and certificate
