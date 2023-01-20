@@ -56,15 +56,15 @@ class GuildConfig:
 class AppConfig:
   twitch_id:str = ""
   twitch_secret:str = ""
-  eventsub_port:int = 1234
-  callback_url:str = "localhost"
+  eventsub_host:str | None = None
+  eventsub_port:int = 8888
+  oauth_callback_url:str = "localhost:17563"
   discord_token:str = ""
   
   ngrok_path:str = ""
   ngrok_conf:str = ""
 
   log_level:str = field(default="INFO")
-  cache_file:str = field(default="./cache")
 
 @dataclass
 class ServerConfig(JSONWizard):

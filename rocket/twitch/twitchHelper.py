@@ -55,18 +55,25 @@ class TwitchHelper:
     return self._bot.d.settings.app.ngrok_conf
   
   @property
-  def CALLBACK_URL(self):
-    return self._bot.d.settings.app.callback_url
+  def OAUTH_URL(self):
+    return self._bot.d.settings.app.oauth_callback_url
+
+  @property
+  def EVENTSUB_HOST(self) -> str:
+    return self._bot.d.settings.app.eventsub_host
 
   async def setup(self):
     self.twitch = await Twitch(self.TWITCH_ID, self.TWITCH_SECRET)
-    #await self.twitch.authenticate_app(scope=[])
-    self.ngrok = self.start_proxy()
+    if self.EVENTSUB_HOST:
+      public_url = self.EVENTSUB_HOST
+    else:
+      self.ngrok = self.start_proxy()
+      public_url = self.ngrok.public_url
     self.userauth = UserAuthenticator(self.twitch, [])
-    self.authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, self.userauth.state)
+    self.authserver = AuthServer(self.twitch, [], self.OAUTH_URL, self.userauth.state)
 
     # basic setup, will run on port 8888 and a reverse proxy takes care of the https and certificate
-    self.event_sub = EventSub(self.ngrok.public_url, self.TWITCH_ID, self.EVENTSUB_PORT, self.twitch)
+    self.event_sub = EventSub(public_url, self.TWITCH_ID, self.EVENTSUB_PORT, self.twitch)
 
   async def shutdown(self):
     ngrok.kill()
@@ -104,7 +111,7 @@ class TwitchHelper:
 
   
   async def authenticate(self) -> tuple[str, str] | None:
-    self.authserver = AuthServer(self.twitch, [], self.CALLBACK_URL, self.userauth.state)
+    self.authserver = AuthServer(self.twitch, [], self.OAUTH_URL, self.userauth.state)
 
     user_token = await self.authserver.go()
     try:
