@@ -58,7 +58,8 @@ class AppConfig:
   twitch_secret:str = ""
   eventsub_host:str | None = None
   eventsub_port:int = 8888
-  oauth_callback_url:str = "localhost:17563"
+  oauth_callback_url:str = "localhost"
+  oauth_callback_port:int = 17563
   discord_token:str = ""
   
   ngrok_path:str = ""

@@ -57,6 +57,10 @@ class TwitchHelper:
   @property
   def OAUTH_URL(self):
     return self._bot.d.settings.app.oauth_callback_url
+  
+  @property
+  def OAUTH_PORT(self):
+    return self._bot.d.settings.app.oauth_callback_port
 
   @property
   def EVENTSUB_HOST(self) -> str:
