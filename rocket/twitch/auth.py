@@ -56,7 +56,7 @@ class AuthServer:
     asyncio.set_event_loop(self.__loop)
     self.__loop.run_until_complete(runner.setup())
     self.__runner = runner # For persistence I think
-    self.__server = web.TCPSite(runner, host=self.host, port=self.port, reuse_address=True, reuse_port=True)
+    self.__server = web.TCPSite(runner, host="localhost", port=self.port, reuse_address=True, reuse_port=True)
     self.__loop.run_until_complete(self.__server.start())
     self.__is_running = True
     log.debug("Started auth server")
