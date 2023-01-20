@@ -115,7 +115,7 @@ class TwitchHelper:
 
   
   async def authenticate(self) -> tuple[str, str] | None:
-    self.authserver = AuthServer(self.twitch, [], self.OAUTH_URL, self.userauth.state)
+    self.authserver = AuthServer(self.twitch, [], self.OAUTH_URL, self.OAUTH_PORT, self.userauth.state)
 
     user_token = await self.authserver.go()
     try:
