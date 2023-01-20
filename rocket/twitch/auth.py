@@ -13,12 +13,12 @@ from twitchAPI.types import AuthScope
 log = logging.getLogger("rocket.twitch.auth")
 
 class AuthServer:
-  def __init__(self, twitch: Twitch, scopes: list[AuthScope], url: str, state: str):
+  def __init__(self, twitch: Twitch, scopes: list[AuthScope], url: str, port: int, state: str):
     # Auth params
     self.__twitch: Twitch = twitch
     self.scopes: list[AuthScope] = scopes
-    self.url: str = url
-    self.host, self.port = url.rsplit(":", 1)
+    self.host = url
+    self.port = port
     self.state: str = state if state else str(get_uuid())
     # Server state params
     self.__user_token: str | None = None
@@ -34,7 +34,7 @@ class AuthServer:
   def __build_auth_url(self):
     params = {
       'client_id': self.__twitch.app_id,
-      'redirect_uri': self.url,
+      'redirect_uri': self.host,
       'response_type': 'code',
       'scope': build_scope(self.scopes),
       'force_verify': str(False).lower(),
@@ -56,7 +56,7 @@ class AuthServer:
     asyncio.set_event_loop(self.__loop)
     self.__loop.run_until_complete(runner.setup())
     self.__runner = runner # For persistence I think
-    self.__server = web.TCPSite(runner, host=self.host, port=int(self.port), reuse_address=True, reuse_port=True)
+    self.__server = web.TCPSite(runner, host=self.host, port=self.port, reuse_address=True, reuse_port=True)
     self.__loop.run_until_complete(self.__server.start())
     self.__is_running = True
     log.debug("Started auth server")
