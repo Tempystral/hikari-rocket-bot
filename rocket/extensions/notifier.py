@@ -1,3 +1,4 @@
+import time
 from logging import getLogger
 from queue import Queue
 
@@ -6,13 +7,13 @@ import lightbulb as lb
 from hikari.embeds import Embed
 from hikari.errors import NotFoundError
 from lightbulb.ext import tasks
+from twitchAPI.helper import first
+from twitchAPI.oauth import get_user_info
 
 from rocket.extensions.checks import has_streamer_role_in_guild
 from rocket.twitch import TwitchHelper
 from rocket.util.config import ServerConfig
 from rocket.util.errors import RocketBotException
-from twitchAPI.helper import first
-from twitchAPI.oauth import get_user_info
 
 log = getLogger("rocket.extensions.notifier")
 
@@ -59,6 +60,7 @@ async def authorize_user(ctx: lb.Context):
     if userinfo.get("sub") == user.id:
       log.debug(f"Verified: {user.display_name} is correct user, adding to list of users")
       settings.update_user(ctx.options.username, int(user.id), user.display_name, tokens[0], tokens[1])
+      settings.add_user(ctx.guild_id, user.login)
       await helper.add_subscription(ctx.options.username)
 
       await ctx.respond(
@@ -86,13 +88,13 @@ async def twitch_event(bot: lb.BotApp):
     channels = await helper.twitch.get_channel_information(broadcaster_id=user_id)
     user = await first(helper.twitch.get_users(user_ids=[user_id]))
     if user and channels and (channel := channels[0]):
-      notif = (
+      msg_embed = (
         Embed(title=f"{channel.title}", url=f"https://www.twitch.tv/{channel.broadcaster_login}", colour="#9146FF")
         .set_image(helper.create_thumbnail(channel.broadcaster_login, 1280, 720))
         .set_author(name=channel.broadcaster_name, icon=user.profile_image_url, url=f"https://www.twitch.tv/{channel.broadcaster_login}")
         .add_field(name="Game", value=channel.game_name, inline=True)
         .add_field(name="Tags", value=" ".join((f"`{tag}`" for tag in channel.tags)), inline=True)
-        # .add_field(name="Started at", value=f"<t:{int(stream.started_at.timestamp())}>", inline=True)
+        .add_field(name="Started at", value=f"<t:{int(time.time())}>", inline=True)
       )
       
       for guild in (g for g in settings.guilds.values() if user.login in g.watching):
@@ -103,7 +105,7 @@ async def twitch_event(bot: lb.BotApp):
             await bot.rest.create_message(
               channel=guild.notification_channel,
               content=f"{'@everyone, ' if guild.everyone else ''}{user.display_name} is live!",
-              embed=notif
+              embed=msg_embed
               )
             log.info(f"Created message in {guild.name} for streamer {user.login}")
           except NotFoundError:

@@ -14,7 +14,7 @@ admin_plugin = lb.Plugin("Admin")
 
 @admin_plugin.command
 @lb.add_checks(lb.has_guild_permissions(Permissions.MANAGE_ROLES))
-@lb.command("admin", "Manage server-specific settings for the bot", guilds=[645680257797586953, 697911541193769021])
+@lb.command("admin", "Manage server-specific settings for the bot")
 @lb.implements(lb.SlashCommandGroup, lb.PrefixCommandGroup)
 async def admin_group(ctx: lb.Context) -> None:
   pass
