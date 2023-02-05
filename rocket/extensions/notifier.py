@@ -88,19 +88,21 @@ async def twitch_event(bot: lb.BotApp):
     channels = await helper.twitch.get_channel_information(broadcaster_id=user_id)
     user = await first(helper.twitch.get_users(user_ids=[user_id]))
     if user and channels and (channel := channels[0]):
-      msg_embed = (
-        Embed(title=f"{channel.title}", url=f"https://www.twitch.tv/{channel.broadcaster_login}", colour="#9146FF")
-        .set_image(helper.create_thumbnail(channel.broadcaster_login, 1280, 720))
-        .set_author(name=channel.broadcaster_name, icon=user.profile_image_url, url=f"https://www.twitch.tv/{channel.broadcaster_login}")
-        .add_field(name="Game", value=channel.game_name, inline=True)
-        .add_field(name="Tags", value=" ".join((f"`{tag}`" for tag in channel.tags)), inline=True)
-        .add_field(name="Started at", value=f"<t:{int(time.time())}>", inline=True)
-      )
+      
       
       for guild in (g for g in settings.guilds.values() if user.login in g.watching):
         if guild.notification_channel is None:
           log.warning(f"Guild {guild.name} had an improperly-configured channel!")
         else:
+          msg_embed = (
+            Embed(title=f"{channel.title}", url=f"https://www.twitch.tv/{channel.broadcaster_login}", colour="#9146FF")
+            .set_image(helper.create_thumbnail(channel.broadcaster_login, 1280, 720))
+            .set_author(name=channel.broadcaster_name, icon=user.profile_image_url, url=f"https://www.twitch.tv/{channel.broadcaster_login}")
+            .add_field(name="Game", value=channel.game_name, inline=True)
+            .add_field(name="Tags", value=" ".join((f"`{tag}`" for tag in channel.tags)), inline=True)
+            .add_field(name="Started at", value=f"<t:{int(time.time())}>", inline=True)
+          )
+
           try:
             await bot.rest.create_message(
               channel=guild.notification_channel,
