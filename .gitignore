@@ -95,6 +95,7 @@ ENV/
 env.bak/
 venv.bak/
 env310/
+env311/
 
 # Spyder project settings
 .spyderproject
@@ -116,3 +117,7 @@ dmypy.json
 cache
 logs/*
 settings.json
+.vscode/launch.json
+test.py
+.vscode/hikari-bot.code-workspace
+config.toml

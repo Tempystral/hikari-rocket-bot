@@ -1,11 +1,12 @@
 import lightbulb as lb
 from hikari import MessageFlag
-from rocket.util.config import ELEVATED_ROLES
+from rocket.util.config import ServerConfig
+from rocket.extensions.checks import has_streamer_role_in_guild
 
 debug_plugin = lb.Plugin("Debug")
 
 @debug_plugin.command
-@lb.add_checks(lb.has_roles(ELEVATED_ROLES[0], *ELEVATED_ROLES, mode=any))
+@lb.add_checks(lb.checks.owner_only)
 @lb.command("debug", "Manage internal settings for the bot", hidden=True)
 @lb.implements(lb.SlashCommandGroup, lb.PrefixCommandGroup)
 async def module_group(ctx: lb.Context) -> None:
