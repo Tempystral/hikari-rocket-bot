@@ -119,3 +119,4 @@ logs/*
 settings.json
 .vscode/launch.json
 test.py
+.vscode/hikari-bot.code-workspace
