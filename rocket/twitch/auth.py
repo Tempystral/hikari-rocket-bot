@@ -6,9 +6,9 @@ from time import sleep
 
 from aiohttp import web
 from aiohttp.web import AppRunner
-from twitchAPI import Twitch
+from twitchAPI.twitch import Twitch
 from twitchAPI.helper import (TWITCH_AUTH_BASE_URL, build_scope, build_url, get_uuid)
-from twitchAPI.types import AuthScope
+from twitchAPI.type import AuthScope
 
 log = logging.getLogger("rocket.twitch.auth")
 

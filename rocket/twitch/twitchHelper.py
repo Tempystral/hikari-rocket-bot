@@ -11,13 +11,13 @@ from lightbulb import BotApp
 from lightbulb.ext import tasks
 from pyngrok import conf, ngrok
 from pyngrok.ngrok import NgrokTunnel
-from twitchAPI.eventsub import EventSub
+from twitchAPI.eventsub.webhook import EventSubWebhook as EventSub
 from twitchAPI.helper import first
 from twitchAPI.oauth import (InvalidRefreshTokenException,
                              UnauthorizedException, UserAuthenticator,
                              refresh_access_token, validate_token)
-from twitchAPI.twitch import Stream, Twitch, TwitchUser
-from twitchAPI.types import EventSubSubscriptionConflict, TwitchAPIException
+from twitchAPI.twitch import Twitch, TwitchUser
+from twitchAPI.type import EventSubSubscriptionConflict, TwitchAPIException
 
 from rocket.twitch.auth import AuthServer
 from rocket.util.config import ServerConfig
@@ -77,7 +77,7 @@ class TwitchHelper:
     self.authserver = AuthServer(self.twitch, [], self.OAUTH_URL, self.OAUTH_PORT, self.userauth.state)
 
     # basic setup, will run on port 8888 and a reverse proxy takes care of the https and certificate
-    self.event_sub = EventSub(public_url, self.TWITCH_ID, self.EVENTSUB_PORT, self.twitch)
+    self.event_sub = EventSub(public_url, self.EVENTSUB_PORT, self.twitch)
 
   async def shutdown(self):
     ngrok.kill()

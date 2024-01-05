@@ -28,7 +28,6 @@ class RocketBot(BotApp):
                      logs=True
                     )
 
-    self.d.session = aiohttp.ClientSession()
     self.d.settings = get_settings()
     self.d.helper = create_twitch_helper(self)
     self.d.tasks = set()
@@ -36,6 +35,7 @@ class RocketBot(BotApp):
     setup_logging(log_level)
 
   async def on_starting(self, event:hikari.Event) -> None:
+    self.d.session = aiohttp.ClientSession()
     log.info("Starting...")
   
   async def on_started(self, event:hikari.Event) -> None:
