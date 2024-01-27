@@ -1,26 +1,25 @@
 from __future__ import annotations
 
 import asyncio
-from queue import Queue
 import uuid
 from logging import getLogger
+from math import e
+from queue import Queue
 
-from hikari.embeds import Embed
-from hikari.errors import NotFoundError
 from lightbulb import BotApp
-from lightbulb.ext import tasks
 from pyngrok import conf, ngrok
 from pyngrok.ngrok import NgrokTunnel
 from twitchAPI.eventsub.webhook import EventSubWebhook as EventSub
 from twitchAPI.helper import first
-from twitchAPI.oauth import (InvalidRefreshTokenException,
-                             UnauthorizedException, UserAuthenticator,
-                             refresh_access_token, validate_token)
+from twitchAPI.oauth import (UserAuthenticator, refresh_access_token,
+                             validate_token)
+from twitchAPI.object.eventsub import StreamOnlineEvent
 from twitchAPI.twitch import Twitch, TwitchUser
-from twitchAPI.type import EventSubSubscriptionConflict, TwitchAPIException
+from twitchAPI.type import (EventSubSubscriptionConflict,
+                            InvalidRefreshTokenException, TwitchAPIException,
+                            UnauthorizedException)
 
 from rocket.twitch.auth import AuthServer
-from rocket.util.config import ServerConfig
 from rocket.util.config.serverConfig import UserConfig
 
 log = getLogger("rocket.twitch.helper")
@@ -73,6 +72,9 @@ class TwitchHelper:
     else:
       self.ngrok = self.start_proxy()
       public_url = self.ngrok.public_url
+    
+    if public_url == None:
+      raise TypeError
     self.userauth = UserAuthenticator(self.twitch, [], url=self.OAUTH_URL)
     self.authserver = AuthServer(self.twitch, [], self.OAUTH_URL, self.OAUTH_PORT, self.userauth.state)
 
@@ -148,9 +150,9 @@ class TwitchHelper:
   def create_thumbnail(self, username:str, width:int, height:int) -> str:
     return rf'https://static-cdn.jtvnw.net/previews-ttv/live_user_{username}-{width}x{height}.jpg?v={str(uuid.uuid4())}'
 
-  async def on_start_streaming(self, data: dict):
-    username = data['event']['broadcaster_user_login']
-    user_id = data['event']['broadcaster_user_id']
+  async def on_start_streaming(self, event: StreamOnlineEvent):
+    username = event.event.broadcaster_user_login
+    user_id = event.event.broadcaster_user_id
     log.info(f"User has started streaming: {username}")
     queue = self._bot.d.get_as("msgQueue", Queue)
     queue.put(user_id)

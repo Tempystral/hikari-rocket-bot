@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"[python]": {
+			"diffEditor.ignoreTrimWhitespace": false,
+			"editor.formatOnSave": true,
+			
+		},
+		"editor.codeActionsOnSave": {
+			"source.fixAll": "always",
+		}
+	}
+}
